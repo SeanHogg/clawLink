@@ -35,15 +35,31 @@ class GitHubIntegration:
             Tuple of (owner, repo_name) or (None, None) if invalid
         """
         try:
-            # Handle different URL formats
-            # https://github.com/owner/repo
-            # git@github.com:owner/repo.git
-            if "github.com" in repo_url:
-                parts = repo_url.replace(".git", "").split("/")
+            # Normalize URL
+            url = repo_url.strip().replace(".git", "")
+            
+            # Handle HTTPS format: https://github.com/owner/repo
+            if url.startswith("https://github.com/") or url.startswith("http://github.com/"):
+                # Extract path after github.com
+                path = url.split("github.com/", 1)[-1]
+                parts = path.split("/")
                 if len(parts) >= 2:
-                    repo_name = parts[-1]
-                    owner = parts[-2].split(":")[-1]  # Handle git@github.com:owner format
-                    return owner, repo_name
+                    owner = parts[0]
+                    repo_name = parts[1]
+                    # Validate owner and repo are not empty
+                    if owner and repo_name:
+                        return owner, repo_name
+            
+            # Handle SSH format: git@github.com:owner/repo
+            elif url.startswith("git@github.com:"):
+                path = url.split("git@github.com:", 1)[-1]
+                parts = path.split("/")
+                if len(parts) >= 2:
+                    owner = parts[0]
+                    repo_name = parts[1]
+                    # Validate owner and repo are not empty
+                    if owner and repo_name:
+                        return owner, repo_name
         except Exception as e:
             logger.error(f"Failed to parse repo URL {repo_url}: {str(e)}")
         
