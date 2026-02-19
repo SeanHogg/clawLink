@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     
     # Goose
     goose_api_url: str = "http://localhost:8000"
+    goose_cli_path: str = "goose"
+
+    # Aider
+    aider_path: str = "aider"
     
     # Server
     api_host: str = "0.0.0.0"

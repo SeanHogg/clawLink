@@ -30,7 +30,7 @@ class ClaudeAgent(BaseAgent):
         """Validate Claude configuration."""
         return bool(self.api_key and self.client)
     
-    async def execute(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> AgentResponse:
+    async def execute(self, prompt: str, context: Optional[Dict[str, Any]] = None, file_context=None, working_directory=None) -> AgentResponse:
         """Execute Claude agent with prompt."""
         if not self.validate_config():
             return AgentResponse(

@@ -6,6 +6,8 @@ from app.agents.claude_agent import ClaudeAgent
 from app.agents.ollama_agent import OllamaAgent
 from app.agents.openai_agent import OpenAIAgent, AuggieAgent
 from app.agents.http_agent import OpenDevinAgent, GooseAgent
+from app.agents.aider_agent import AiderAgent
+from app.agents.goose_cli_agent import GooseCliAgent
 from app.models.database import AgentType
 from app.core.config import get_settings
 import logging
@@ -48,11 +50,26 @@ class AgentOrchestrator:
                 "api_url": self.settings.opendevin_api_url
             })
         
-        # Goose agent
+        # Goose HTTP agent (requires running Goose server)
         if self.settings.goose_api_url:
             self.agents[AgentType.GOOSE.value] = GooseAgent({
                 "api_url": self.settings.goose_api_url
             })
+
+        # Goose CLI agent (invokes goose executable directly)
+        self.agents[AgentType.GOOSE_CLI.value] = GooseCliAgent({
+            "goose_cli_path": self.settings.goose_cli_path
+        })
+
+        # Aider CLI agent (invokes aider executable directly)
+        aider_config: Dict[str, Any] = {
+            "aider_path": self.settings.aider_path,
+        }
+        if self.settings.openai_api_key:
+            aider_config["api_key"] = self.settings.openai_api_key
+        elif self.settings.anthropic_api_key:
+            aider_config["api_key"] = self.settings.anthropic_api_key
+        self.agents[AgentType.AIDER.value] = AiderAgent(aider_config)
         
         logger.info(f"Initialized {len(self.agents)} agents: {list(self.agents.keys())}")
     
@@ -72,7 +89,9 @@ class AgentOrchestrator:
         self,
         agent_type: AgentType,
         prompt: str,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        file_context: Optional[List[str]] = None,
+        working_directory: Optional[str] = None,
     ) -> AgentResponse:
         """
         Execute a task with specified agent.
@@ -81,6 +100,8 @@ class AgentOrchestrator:
             agent_type: Type of agent to use
             prompt: Task prompt/instruction
             context: Additional context (project, task details, etc.)
+            file_context: List of file paths to include in agent context
+            working_directory: Directory in which the agent should operate
         
         Returns:
             AgentResponse with result or error
@@ -100,7 +121,12 @@ class AgentOrchestrator:
             )
         
         logger.info(f"Executing task with {agent_type.value} agent")
-        return await agent.execute(prompt, context)
+        return await agent.execute(
+            prompt,
+            context,
+            file_context=file_context,
+            working_directory=working_directory,
+        )
 
 
 # Global orchestrator instance
