@@ -55,8 +55,6 @@ class AgentType(str, enum.Enum):
     CLAUDE = "claude"
     OPENDEVIN = "opendevin"
     GOOSE = "goose"
-    GOOSE_CLI = "goose_cli"
-    AIDER = "aider"
     OLLAMA = "ollama"
 
 

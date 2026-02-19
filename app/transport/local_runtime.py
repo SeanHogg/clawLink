@@ -243,36 +243,10 @@ class LocalRuntime(RuntimeInterface):
             ),
             "goose": AgentInfo(
                 agent_type="goose",
-                name="Goose (HTTP)",
-                description="Goose agent via HTTP API (requires running Goose server)",
+                name="Goose",
+                description="Goose agent",
                 available="goose" in available_agents,
                 capabilities=["code_generation", "system_automation"]
-            ),
-            "goose_cli": AgentInfo(
-                agent_type="goose_cli",
-                name="Goose CLI",
-                description=(
-                    "Goose CLI agent — invokes the goose executable directly. "
-                    "Supports file context and working directory for local execution."
-                ),
-                available="goose_cli" in available_agents,
-                capabilities=["code_generation", "system_automation", "file_editing", "shell_execution"],
-            ),
-            "aider": AgentInfo(
-                agent_type="aider",
-                name="Aider",
-                description=(
-                    "Aider CLI AI pair programming agent — edits files directly, "
-                    "auto-commits with git, and supports file context for targeted edits."
-                ),
-                available="aider" in available_agents,
-                capabilities=[
-                    "code_generation",
-                    "file_editing",
-                    "git_integration",
-                    "repo_mapping",
-                    "multi_file_editing",
-                ],
             ),
         }
         
