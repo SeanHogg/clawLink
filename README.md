@@ -1,4 +1,5 @@
-# AI Agent Orchestrator Portal
+
+#
 
 A telegram-aware agentic portal similar to Jira that enables project management and code generation through multiple AI agents. Connect to GitHub repositories and create pull requests directly from the platform.
 
@@ -272,5 +273,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Analytics and reporting dashboard
 
 ## 💬 Support
-
-For issues and questions, please use the GitHub issue tracker.
