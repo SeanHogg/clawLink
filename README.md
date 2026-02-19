@@ -9,6 +9,11 @@ A secure, distributed AI-native development runtime that transforms from a basic
 
 ### Phase 1: Core Intelligence
 - **Jira-like Web Interface**: Modern project and task management UI with Kanban boards
+A telegram-aware agentic portal for project management and code generation through multiple AI agents. Connect to GitHub repositories and create pull requests directly from the platform.
+
+## 🌟 Features
+
+- **Web Interface**: Modern project and task management UI with Kanban boards
 - **Telegram Bot Integration**: Interact with projects and agents via Telegram
 - **Multi-Agent Support**: Execute tasks with different AI agents:
   - 🤖 Auggie (OpenAI-based)
@@ -348,7 +353,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] File uploads and attachments
 - [ ] Advanced agent configuration
 - [ ] Custom agent workflows
-- [ ] Integration with more services (Slack, Discord, etc.)
+- [ ] Integration with more messaging services (chat platforms, etc.)
 - [ ] Analytics and reporting dashboard
 
 ### Phase 2 Roadmap
