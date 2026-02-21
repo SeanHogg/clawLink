@@ -14,22 +14,41 @@ class Permission(str, Enum):
     TASK_SUBMIT = "task:submit"
     TASK_CANCEL = "task:cancel"
     TASK_VIEW = "task:view"
-    
+
     # Agent permissions
     AGENT_LIST = "agent:list"
     AGENT_EXECUTE = "agent:execute"
     AGENT_CONFIGURE = "agent:configure"
-    
+
     # Skill permissions
     SKILL_LIST = "skill:list"
     SKILL_EXECUTE = "skill:execute"
     SKILL_INSTALL = "skill:install"
-    
+
     # Project permissions
     PROJECT_READ = "project:read"
     PROJECT_WRITE = "project:write"
     PROJECT_DELETE = "project:delete"
-    
+
+    # Requirement permissions (human-in-the-loop)
+    REQUIREMENT_CREATE = "requirement:create"
+    REQUIREMENT_READ = "requirement:read"
+    REQUIREMENT_ASSIGN = "requirement:assign"
+    REQUIREMENT_UPDATE = "requirement:update"
+    REQUIREMENT_DELETE = "requirement:delete"
+
+    # Work-assignment and lifecycle control
+    WORK_ASSIGN = "work:assign"
+    LIFECYCLE_CONTROL = "lifecycle:control"
+
+    # Integration management
+    INTEGRATION_MANAGE = "integration:manage"
+    INTEGRATION_READ = "integration:read"
+
+    # Tenant management
+    TENANT_MANAGE = "tenant:manage"
+    TENANT_READ = "tenant:read"
+
     # Admin permissions
     ADMIN_USERS = "admin:users"
     ADMIN_SYSTEM = "admin:system"
@@ -38,6 +57,7 @@ class Permission(str, Enum):
 class Role(str, Enum):
     """System roles."""
     ADMIN = "admin"
+    MANAGER = "manager"       # Human-in-the-loop: creates requirements and assigns work
     DEVELOPER = "developer"
     VIEWER = "viewer"
     GUEST = "guest"
@@ -59,8 +79,37 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.PROJECT_READ,
         Permission.PROJECT_WRITE,
         Permission.PROJECT_DELETE,
+        Permission.REQUIREMENT_CREATE,
+        Permission.REQUIREMENT_READ,
+        Permission.REQUIREMENT_ASSIGN,
+        Permission.REQUIREMENT_UPDATE,
+        Permission.REQUIREMENT_DELETE,
+        Permission.WORK_ASSIGN,
+        Permission.LIFECYCLE_CONTROL,
+        Permission.INTEGRATION_MANAGE,
+        Permission.INTEGRATION_READ,
+        Permission.TENANT_MANAGE,
+        Permission.TENANT_READ,
         Permission.ADMIN_USERS,
         Permission.ADMIN_SYSTEM,
+    },
+    Role.MANAGER: {
+        # Managers direct agents and review work; they do NOT run agents directly
+        Permission.TASK_VIEW,
+        Permission.TASK_CANCEL,
+        Permission.AGENT_LIST,
+        Permission.SKILL_LIST,
+        Permission.PROJECT_READ,
+        Permission.PROJECT_WRITE,
+        Permission.REQUIREMENT_CREATE,
+        Permission.REQUIREMENT_READ,
+        Permission.REQUIREMENT_ASSIGN,
+        Permission.REQUIREMENT_UPDATE,
+        Permission.WORK_ASSIGN,
+        Permission.LIFECYCLE_CONTROL,
+        Permission.INTEGRATION_MANAGE,
+        Permission.INTEGRATION_READ,
+        Permission.TENANT_READ,
     },
     Role.DEVELOPER: {
         Permission.TASK_SUBMIT,
@@ -72,12 +121,18 @@ ROLE_PERMISSIONS: Dict[Role, Set[Permission]] = {
         Permission.SKILL_EXECUTE,
         Permission.PROJECT_READ,
         Permission.PROJECT_WRITE,
+        Permission.REQUIREMENT_READ,
+        Permission.INTEGRATION_READ,
+        Permission.TENANT_READ,
     },
     Role.VIEWER: {
         Permission.TASK_VIEW,
         Permission.AGENT_LIST,
         Permission.SKILL_LIST,
         Permission.PROJECT_READ,
+        Permission.REQUIREMENT_READ,
+        Permission.INTEGRATION_READ,
+        Permission.TENANT_READ,
     },
     Role.GUEST: {
         Permission.AGENT_LIST,
@@ -102,7 +157,7 @@ class RBACManager:
     Role-Based Access Control Manager.
     
     Manages:
-    - User roles and permissions
+    - User roles and permissions (global and per-tenant)
     - Resource-level access policies
     - Agent-level authorization
     - Skill-level execution controls
@@ -113,6 +168,8 @@ class RBACManager:
         self._user_roles: Dict[str, Set[Role]] = {}
         self._user_permissions: Dict[str, Set[Permission]] = {}
         self._resource_policies: Dict[str, AccessPolicy] = {}
+        # Tenant-scoped roles: {tenant_id -> {user_id -> Set[Role]}}
+        self._tenant_roles: Dict[str, Dict[str, Set[Role]]] = {}
         logger.info("RBAC manager initialized")
     
     def assign_role(self, user_id: str, role: Role):
@@ -225,7 +282,44 @@ class RBACManager:
                     return False
         
         return True
-    
+
+    # ------------------------------------------------------------------
+    # Tenant-scoped RBAC
+    # ------------------------------------------------------------------
+
+    def assign_tenant_role(self, tenant_id: str, user_id: str, role: Role) -> None:
+        """Assign a role to a user within a specific tenant."""
+        if tenant_id not in self._tenant_roles:
+            self._tenant_roles[tenant_id] = {}
+        if user_id not in self._tenant_roles[tenant_id]:
+            self._tenant_roles[tenant_id][user_id] = set()
+        self._tenant_roles[tenant_id][user_id].add(role)
+        logger.info(f"Assigned tenant role {role} to user {user_id} in tenant {tenant_id}")
+
+    def revoke_tenant_role(self, tenant_id: str, user_id: str, role: Role) -> None:
+        """Revoke a role from a user within a specific tenant."""
+        self._tenant_roles.get(tenant_id, {}).get(user_id, set()).discard(role)
+        logger.info(f"Revoked tenant role {role} from user {user_id} in tenant {tenant_id}")
+
+    def get_tenant_roles(self, tenant_id: str, user_id: str) -> Set[Role]:
+        """Return the roles held by a user within a tenant."""
+        return self._tenant_roles.get(tenant_id, {}).get(user_id, set()).copy()
+
+    def get_tenant_permissions(self, tenant_id: str, user_id: str) -> Set[Permission]:
+        """Return all permissions derived from tenant-scoped roles plus global permissions."""
+        permissions: Set[Permission] = set()
+        for role in self.get_tenant_roles(tenant_id, user_id):
+            permissions.update(ROLE_PERMISSIONS.get(role, set()))
+        # Merge global permissions
+        permissions.update(self.get_user_permissions(user_id))
+        return permissions
+
+    def has_tenant_permission(
+        self, tenant_id: str, user_id: str, permission: Permission
+    ) -> bool:
+        """Check if a user holds a permission within a specific tenant."""
+        return permission in self.get_tenant_permissions(tenant_id, user_id)
+
     def can_execute_agent(self, user_id: str, agent_type: str) -> bool:
         """Check if user can execute a specific agent."""
         return self.check_resource_access(

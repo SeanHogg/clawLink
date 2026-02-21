@@ -1,11 +1,59 @@
 """Database models for the portal."""
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum as SQLEnum, Boolean
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 import enum
 
 Base = declarative_base()
+
+
+class TenantStatus(str, enum.Enum):
+    """Tenant (organisation) status."""
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
+    ARCHIVED = "archived"
+
+
+class TenantRole(str, enum.Enum):
+    """Role within a tenant."""
+    OWNER = "owner"
+    MANAGER = "manager"
+    DEVELOPER = "developer"
+    VIEWER = "viewer"
+
+
+class RequirementStatus(str, enum.Enum):
+    """Status of a human-created requirement."""
+    DRAFT = "draft"
+    OPEN = "open"
+    ASSIGNED = "assigned"
+    IN_PROGRESS = "in_progress"
+    IN_REVIEW = "in_review"
+    DONE = "done"
+    REJECTED = "rejected"
+
+
+class LifecycleStage(str, enum.Enum):
+    """
+    Lifecycle stages where a human manager can choose to engage.
+
+    PLANNING  – before work starts (humans approve the approach)
+    EXECUTION – during agent execution (humans can intervene)
+    REVIEW    – after execution, before merge/close
+    """
+    PLANNING = "planning"
+    EXECUTION = "execution"
+    REVIEW = "review"
+
+
+class IntegrationType(str, enum.Enum):
+    """Supported third-party integration types."""
+    GITHUB = "github"
+    GITLAB = "gitlab"
+    JIRA = "jira"
+    SLACK = "slack"
+    WEBHOOK = "webhook"
 
 
 class ProjectStatus(str, enum.Enum):
@@ -58,11 +106,54 @@ class AgentType(str, enum.Enum):
     OLLAMA = "ollama"
 
 
+class Tenant(Base):
+    """
+    Tenant (organisation) model for multi-tenant isolation.
+
+    Every project, requirement, and integration belongs to exactly one tenant.
+    """
+    __tablename__ = "tenants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    slug = Column(String(100), unique=True, nullable=False, index=True)
+    description = Column(Text)
+    status = Column(SQLEnum(TenantStatus), default=TenantStatus.ACTIVE)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    memberships = relationship("TenantMembership", back_populates="tenant", cascade="all, delete-orphan")
+    projects = relationship("Project", back_populates="tenant")
+    requirements = relationship("Requirement", back_populates="tenant", cascade="all, delete-orphan")
+    integrations = relationship("Integration", back_populates="tenant", cascade="all, delete-orphan")
+
+
+class TenantMembership(Base):
+    """Maps a user to a tenant with a specific role."""
+    __tablename__ = "tenant_memberships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    user_id = Column(String(255), nullable=False, index=True)
+    role = Column(SQLEnum(TenantRole), default=TenantRole.DEVELOPER, nullable=False)
+    is_active = Column(Boolean, default=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    tenant = relationship("Tenant", back_populates="memberships")
+
+
 class Project(Base):
     """Project model for organizing tasks and issues."""
     __tablename__ = "projects"
     
     id = Column(Integer, primary_key=True, index=True)
+    # Multi-tenant: every project belongs to a tenant
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     key = Column(String(50), unique=True, nullable=False, index=True)  # e.g., "PROJ"
     description = Column(Text)
@@ -80,6 +171,7 @@ class Project(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
+    tenant = relationship("Tenant", back_populates="projects")
     tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
 
 
@@ -169,3 +261,62 @@ class ExecutionEvent(Base):
     
     # Relationships
     execution = relationship("AgentExecution", back_populates="events")
+
+
+class Requirement(Base):
+    """
+    Human-created requirement that drives agent work.
+
+    Managers create requirements, assign them to agents or developers,
+    and choose which lifecycle stages they want to engage in.
+    """
+    __tablename__ = "requirements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+
+    title = Column(String(500), nullable=False)
+    description = Column(Text)
+    status = Column(SQLEnum(RequirementStatus), default=RequirementStatus.DRAFT, nullable=False)
+
+    # Who created and who is assigned to work on this
+    created_by = Column(String(255), nullable=True, index=True)
+    assigned_to = Column(String(255), nullable=True, index=True)  # user_id or agent identifier
+
+    # Lifecycle control: comma-separated list of LifecycleStage values where a
+    # human manager wishes to be engaged before work continues.
+    human_review_stages = Column(String(255), nullable=True)
+
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    tenant = relationship("Tenant", back_populates="requirements")
+    project = relationship("Project")
+
+
+class Integration(Base):
+    """
+    Third-party integration configured for a tenant (GitHub, GitLab, Jira, …).
+
+    Managers connect integrations so agents and team members can use them.
+    """
+    __tablename__ = "integrations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+
+    name = Column(String(255), nullable=False)
+    integration_type = Column(SQLEnum(IntegrationType), nullable=False)
+    is_active = Column(Boolean, default=True)
+
+    # Generic config stored as JSON text (e.g. base_url, repo owner, workspace)
+    config = Column(Text, nullable=True)
+
+    created_by = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    tenant = relationship("Tenant", back_populates="integrations")

@@ -3,7 +3,10 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from app.models.database import ProjectStatus, TaskStatus, TaskPriority, AgentType, ExecutionState
+from app.models.database import (
+    ProjectStatus, TaskStatus, TaskPriority, AgentType, ExecutionState,
+    TenantStatus, TenantRole, RequirementStatus, LifecycleStage, IntegrationType,
+)
 
 
 # Project schemas
@@ -188,3 +191,142 @@ class AuditLogResponse(BaseModel):
     action: Optional[str] = None
     status: str
     details: Dict[str, Any] = {}
+
+
+# ---------------------------------------------------------------------------
+# Tenant schemas
+# ---------------------------------------------------------------------------
+
+class TenantMembershipBase(BaseModel):
+    """Base membership schema."""
+    user_id: str
+    role: TenantRole = TenantRole.DEVELOPER
+
+
+class TenantMembershipCreate(TenantMembershipBase):
+    """Schema for adding a member to a tenant."""
+    pass
+
+
+class TenantMembershipResponse(TenantMembershipBase):
+    """Schema for membership response."""
+    id: int
+    tenant_id: int
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TenantBase(BaseModel):
+    """Base tenant schema."""
+    name: str = Field(..., min_length=1, max_length=255)
+    slug: str = Field(..., min_length=1, max_length=100, pattern=r"^[a-z0-9-]+$")
+    description: Optional[str] = None
+    status: TenantStatus = TenantStatus.ACTIVE
+
+
+class TenantCreate(TenantBase):
+    """Schema for creating a tenant."""
+    pass
+
+
+class TenantUpdate(BaseModel):
+    """Schema for updating a tenant."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = None
+    status: Optional[TenantStatus] = None
+
+
+class TenantResponse(TenantBase):
+    """Schema for tenant response."""
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ---------------------------------------------------------------------------
+# Requirement schemas
+# ---------------------------------------------------------------------------
+
+class RequirementBase(BaseModel):
+    """Base requirement schema."""
+    title: str = Field(..., min_length=1, max_length=500)
+    description: Optional[str] = None
+    status: RequirementStatus = RequirementStatus.DRAFT
+    project_id: Optional[int] = None
+    assigned_to: Optional[str] = None
+    lifecycle_gates: Optional[List[LifecycleStage]] = None
+
+
+class RequirementCreate(RequirementBase):
+    """Schema for creating a requirement."""
+    tenant_id: int
+
+
+class RequirementUpdate(BaseModel):
+    """Schema for updating a requirement."""
+    title: Optional[str] = Field(None, min_length=1, max_length=500)
+    description: Optional[str] = None
+    status: Optional[RequirementStatus] = None
+    project_id: Optional[int] = None
+    assigned_to: Optional[str] = None
+    lifecycle_gates: Optional[List[LifecycleStage]] = None
+
+
+class RequirementAssign(BaseModel):
+    """Schema for assigning a requirement to a user or agent."""
+    assigned_to: str = Field(..., min_length=1)
+
+
+class RequirementResponse(RequirementBase):
+    """Schema for requirement response."""
+    id: int
+    tenant_id: int
+    created_by: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ---------------------------------------------------------------------------
+# Integration schemas
+# ---------------------------------------------------------------------------
+
+class IntegrationBase(BaseModel):
+    """Base integration schema."""
+    name: str = Field(..., min_length=1, max_length=255)
+    integration_type: IntegrationType
+    config: Optional[Dict[str, Any]] = None
+    is_active: bool = True
+
+
+class IntegrationCreate(IntegrationBase):
+    """Schema for creating an integration."""
+    tenant_id: int
+
+
+class IntegrationUpdate(BaseModel):
+    """Schema for updating an integration."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    config: Optional[Dict[str, Any]] = None
+    is_active: Optional[bool] = None
+
+
+class IntegrationResponse(IntegrationBase):
+    """Schema for integration response."""
+    id: int
+    tenant_id: int
+    created_by: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
