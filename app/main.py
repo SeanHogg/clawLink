@@ -10,7 +10,7 @@ import os
 
 from app.core.database import init_db
 from app.core.config import get_settings
-from app.api import projects, tasks, agents, runtime, audit
+from app.api import projects, tasks, agents, runtime, audit, tenants, requirements, integrations
 from app.telegram_bot.bot import get_bot
 
 # Configure logging
@@ -61,6 +61,12 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Telegram bot token not configured, bot not started")
     
+    logger.info("✓ Phase 3 features active:")
+    logger.info("  - Multi-tenant structure (organisations, memberships)")
+    logger.info("  - Enhanced RBAC with Manager role")
+    logger.info("  - Human-in-the-loop requirements & lifecycle control")
+    logger.info("  - Integration management (GitHub, Jira, …)")
+    logger.info("  - DDD domain layer (tenant, requirement, integration)")
     logger.info("✓ Phase 2 features active:")
     logger.info("  - Transport abstraction layer")
     logger.info("  - Multi-session isolation")
@@ -105,6 +111,11 @@ app.include_router(agents.router, prefix="/api")
 # Phase 2: New runtime and audit APIs
 app.include_router(runtime.router, prefix="/api")
 app.include_router(audit.router, prefix="/api")
+
+# Phase 3: Multi-tenant, RBAC, requirements, integrations
+app.include_router(tenants.router, prefix="/api")
+app.include_router(requirements.router, prefix="/api")
+app.include_router(integrations.router, prefix="/api")
 
 # Mount static files for frontend
 static_dir = os.path.join(os.path.dirname(__file__), "static")
