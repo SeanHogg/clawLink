@@ -223,8 +223,12 @@
         <div id="claw-key-banner" style="display:none;padding:16px;margin-bottom:16px;background:rgba(0,212,255,.08);border:1px solid rgba(0,255,255,.2);border-radius:12px;font-size:13px">
           <strong style="display:block;margin-bottom:6px">🔑 Save this API key — it will not be shown again</strong>
           <code id="claw-key-val" style="font-family:monospace;color:#0ff;word-break:break-all;display:block;margin-bottom:10px"></code>
-          <p style="color:var(--text-muted);margin:0 0 8px;font-size:12px">Paste this into your CoderClaw config file as <code>CODERCLAW_API_KEY</code>.</p>
-          <button class="btn btn-sm btn-secondary" id="btn-dismiss-key">Dismiss</button>
+          <p style="color:var(--text-muted);margin:0 0 10px;font-size:12px">Paste this into your CoderClaw config file as <code>CODERCLAW_API_KEY</code>.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-primary" id="btn-copy-key">📋 Copy</button>
+            <button class="btn btn-sm btn-secondary" id="btn-download-key">⬇ Download</button>
+            <button class="btn btn-sm btn-secondary" id="btn-dismiss-key" style="margin-left:auto">Dismiss</button>
+          </div>
         </div>
         <div class="cards-grid" id="claws-grid"></div>
       </div>

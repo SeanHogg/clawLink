@@ -469,6 +469,29 @@ $('form-register-claw').addEventListener('submit', async (e) => {
 });
 $('btn-dismiss-key').addEventListener('click', () => { $('claw-key-banner').style.display = 'none'; });
 
+$('btn-copy-key').addEventListener('click', async () => {
+  const key = $('claw-key-val').textContent.trim();
+  try {
+    await navigator.clipboard.writeText(key);
+    const btn = $('btn-copy-key');
+    btn.textContent = '✓ Copied!';
+    setTimeout(() => { btn.textContent = '📋 Copy'; }, 2000);
+  } catch { toast('Copy failed — select the key manually', 'error'); }
+});
+
+$('btn-download-key').addEventListener('click', () => {
+  const key  = $('claw-key-val').textContent.trim();
+  const name = document.querySelector('#claws-grid .card-title')?.textContent?.trim() ?? 'coderclaw';
+  const text = `CODERCLAW_API_KEY=${key}\n`;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${name.toLowerCase().replace(/\s+/g, '-')}-api-key.env`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
 async function deleteClaw(id) {
   if (!confirm('Remove this claw from the workspace?')) return;
   try { await api('DELETE', `/api/claws/${id}`); toast('Claw removed'); loadClaws(); }
