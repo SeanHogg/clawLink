@@ -39,6 +39,25 @@ See [PHASE2.md](PHASE2.md) for detailed Phase 2 architecture documentation.
 
 ## 🚀 Quick Start
 
+### Deploying as a Cloudflare Worker
+
+The `/coderclawlink` UI can also be hosted directly on Cloudflare. a small
+worker is provided (`worker.js`) along with `wrangler.toml` in the project root.
+The worker simply proxies requests to whatever backend you run locally (default
+`https://coderclaw.ai`), but you can modify it to bundle the Python app or serve
+static builds.
+
+To publish the worker:
+```bash
+cd e:/code/agentic/coderClawLink
+npm install -g wrangler      # if not already installed
+wrangler login               # authenticate with your CF account
+wrangler publish             # this will register the routes declared in wrangler.toml
+```
+
+You should then see the `coderclawlink`/`app.coderclaw.ai` routes in the
+Cloudflare dashboard and the worker will be running.
+
 ### Prerequisites
 
 - Python 3.10+
