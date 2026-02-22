@@ -18,6 +18,14 @@ export class TenantService {
     return this.tenants.findAll();
   }
 
+  async listTenantsForUser(userId: string): Promise<Array<{ id: number; name: string; slug: string; role: string }>> {
+    const userTenants = await this.tenants.findByUserId(userId);
+    return userTenants.map(t => {
+      const member = t.getMember(userId);
+      return { id: t.id, name: t.name, slug: t.slug, role: member?.role ?? 'member' };
+    });
+  }
+
   async getTenant(id: number): Promise<Tenant> {
     const tenant = await this.tenants.findById(asTenantId(id));
     if (!tenant) throw new NotFoundError('Tenant', id);

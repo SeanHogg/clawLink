@@ -59,6 +59,8 @@ export const auditEventTypeEnum = pgEnum('audit_event_type', [
   'task_created', 'task_updated',
 ]);
 
+export const clawStatusEnum = pgEnum('claw_status', ['active', 'inactive', 'suspended']);
+
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Tables
@@ -186,6 +188,23 @@ export const skills = pgTable('skills', {
   createdAt:    timestamp('created_at').notNull().defaultNow(),
 });
 
+/**
+ * CoderClaw instances — registered CoderClaw machines owned by a tenant.
+ * Each instance authenticates with its own API key (not a user credential).
+ * A claw belongs to exactly one tenant; a tenant can have many claws (the mesh).
+ */
+export const coderclawInstances = pgTable('coderclaw_instances', {
+  id:           serial('id').primaryKey(),
+  tenantId:     integer('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  name:         varchar('name', { length: 255 }).notNull(),
+  slug:         varchar('slug', { length: 255 }).notNull(),
+  apiKeyHash:   varchar('api_key_hash', { length: 64 }).notNull(),
+  status:       clawStatusEnum('status').notNull().default('active'),
+  registeredBy: varchar('registered_by', { length: 36 }).references(() => users.id),
+  lastSeenAt:   timestamp('last_seen_at'),
+  createdAt:    timestamp('created_at').notNull().defaultNow(),
+});
+
 export const executions = pgTable('executions', {
   id:           serial('id').primaryKey(),
   taskId:       integer('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
@@ -212,3 +231,39 @@ export const auditEvents = pgTable('audit_events', {
   metadata:     text('metadata'),
   createdAt:    timestamp('created_at').notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Skill assignments
+// A skill from the marketplace can be assigned to an entire tenant (all claws
+// inherit it) or to a specific CoderClaw instance.
+// ---------------------------------------------------------------------------
+
+/**
+ * Tenant-level skill assignment.
+ * When a skill is assigned here, every active claw in the tenant can use it.
+ * assignedBy is the userId of the owner/manager who made the assignment.
+ */
+export const tenantSkillAssignments = pgTable('tenant_skill_assignments', {
+  id:         serial('id').primaryKey(),
+  tenantId:   integer('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  skillSlug:  varchar('skill_slug', { length: 255 }).notNull(),
+  assignedBy: varchar('assigned_by', { length: 36 }).references(() => users.id),
+  assignedAt: timestamp('assigned_at').notNull().defaultNow(),
+}, (t) => [
+  primaryKey({ columns: [t.tenantId, t.skillSlug] }),
+]);
+
+/**
+ * Claw-level skill assignment.
+ * Overrides or supplements the tenant-level assignment for a specific claw.
+ */
+export const clawSkillAssignments = pgTable('claw_skill_assignments', {
+  id:         serial('id').primaryKey(),
+  clawId:     integer('claw_id').notNull().references(() => coderclawInstances.id, { onDelete: 'cascade' }),
+  tenantId:   integer('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  skillSlug:  varchar('skill_slug', { length: 255 }).notNull(),
+  assignedBy: varchar('assigned_by', { length: 36 }).references(() => users.id),
+  assignedAt: timestamp('assigned_at').notNull().defaultNow(),
+}, (t) => [
+  primaryKey({ columns: [t.clawId, t.skillSlug] }),
+]);

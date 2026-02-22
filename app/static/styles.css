@@ -253,6 +253,18 @@ label {
 }
 textarea.input { resize: vertical; line-height: 1.5; }
 
+/* ── Password visibility toggle ── */
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 42px; }
+.pw-eye {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 18px; line-height: 1;
+  padding: 2px 4px; transition: color 0.15s; user-select: none;
+}
+.pw-eye:hover { color: var(--text-primary); }
+.pw-eye.visible { color: var(--coral-bright); }
+
 /* ── Buttons ── */
 .btn {
   display: inline-flex; align-items: center; gap: 8px;

@@ -51,6 +51,10 @@ export interface WebLoginResult {
   };
 }
 
+export interface MyTenantsResult {
+  tenants: Array<{ id: number; name: string; slug: string; role: string }>;
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -119,6 +123,40 @@ export class AuthService {
   }
 
   // -- Web / marketplace path ------------------------------------------------
+
+  /**
+   * Pre-auth discovery: given a raw API key, return the tenants the user belongs to.
+   * No JWT is issued – the caller uses the result to pick a tenant and then calls /token.
+   */
+  async myTenants(userId: string): Promise<MyTenantsResult> {
+    const userTenants = await this.tenants.findByUserId(userId);
+    return {
+      tenants: userTenants.map(t => {
+        const member = t.getMember(userId);
+        return { id: t.id, name: t.name, slug: t.slug, role: member?.role ?? 'member' };
+      }),
+    };
+  }
+
+  /**
+   * Issue a tenant-scoped JWT for a web user who has already authenticated.
+   * The web JWT is validated upstream; here we just verify membership.
+   */
+  async tenantToken(userId: string, tenantId: number): Promise<LoginResult> {
+    const tenant = await this.tenants.findById(asTenantId(tenantId));
+    if (!tenant) throw new UnauthorizedError('Tenant not found');
+
+    const member = tenant.getMember(userId);
+    if (!member) throw new UnauthorizedError('User is not a member of this tenant');
+
+    const expiresIn = 3600;
+    const token = await signJwt(
+      { sub: userId, tid: tenantId, role: member.role },
+      this.jwtSecret,
+      expiresIn,
+    );
+    return { token, expiresIn };
+  }
 
   async registerWeb(dto: WebRegisterDto): Promise<WebLoginResult> {
     const existing = await this.users.findByEmail(dto.email);

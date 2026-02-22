@@ -40,6 +40,8 @@ import { createAgentRoutes, createSkillRoutes } from './presentation/routes/agen
 import { createRuntimeRoutes }     from './presentation/routes/runtimeRoutes';
 import { createAuditRoutes }       from './presentation/routes/auditRoutes';
 import { createMarketplaceRoutes } from './presentation/routes/marketplaceRoutes';
+import { createClawRoutes }        from './presentation/routes/clawRoutes';
+import { createSkillAssignmentRoutes } from './presentation/routes/skillAssignmentRoutes';
 
 // Middleware
 import { corsMiddleware } from './presentation/middleware/cors';
@@ -83,7 +85,11 @@ function buildApp(env: Env): Hono<HonoEnv> {
   app.route('/marketplace', createMarketplaceRoutes(db));
 
   // Public endpoints (no JWT required)
-  app.route('/api/auth',    createAuthRoutes(authService));
+  app.route('/api/auth',    createAuthRoutes(authService, db));
+
+  // CoderClaw instances + skill assignments (tenant JWT inside each router)
+  app.route('/api/claws',            createClawRoutes(db));
+  app.route('/api/skill-assignments', createSkillAssignmentRoutes(db));
 
   // Protected endpoints (JWT injected by authMiddleware inside each router)
   app.route('/api/projects', createProjectRoutes(projectService));

@@ -6,7 +6,6 @@
   <title>CoderClawLink</title>
   <meta name="description" content="CoderClawLink — Orchestrate projects, tasks and agents across your entire coding mesh." />
   <link rel="icon" type="image/svg+xml" href="https://cdn.builder.io/api/v1/image/assets%2Fac94883aaa0849cc897eb61793256164%2Fc284d818569a472aa80fdbee574db744?format=webp&width=32&height=32" />
-  <!-- Fonts -->
   <link rel="preconnect" href="https://api.fontshare.com" />
   <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
   <link href="https://api.fontshare.com/v2/css?f[]=clash-display@700,600,500&f[]=satoshi@400,500,700&display=swap" rel="stylesheet" />
@@ -22,8 +21,8 @@
 <body>
   <div class="stars"></div>
   <div class="nebula"></div>
-
   <div class="app-container">
+
     <!-- Navbar -->
     <header class="navbar">
       <div class="nav-container">
@@ -31,19 +30,18 @@
           <img src="https://cdn.builder.io/api/v1/image/assets%2Fac94883aaa0849cc897eb61793256164%2Fc284d818569a472aa80fdbee574db744?format=webp&width=800&height=1200" alt="CoderClaw" />
           CoderClawLink
         </a>
-
-        <!-- tabs hidden until logged in -->
         <nav class="nav-tabs" id="nav-tabs" style="display:none">
           <button class="nav-tab active" data-view="projects">Projects</button>
           <button class="nav-tab" data-view="tasks">Tasks</button>
-          <button class="nav-tab" data-view="tenants">Tenants</button>
+          <button class="nav-tab" data-view="claws">Claws</button>
+          <button class="nav-tab" data-view="skills">Skills</button>
           <button class="nav-tab" data-view="agents">Agents</button>
+          <button class="nav-tab" data-view="tenants">Workspace</button>
         </nav>
-
         <div class="nav-right">
           <div class="user-chip" id="user-chip" style="display:none">
             <span class="dot"></span>
-            <span id="user-email-label">user</span>
+            <span id="user-label">user</span>
           </div>
           <button class="btn-logout" id="btn-logout" style="display:none">Sign out</button>
           <button class="theme-toggle" id="theme-toggle" title="Toggle theme">☀</button>
@@ -51,154 +49,179 @@
       </div>
     </header>
 
-    <!-- Auth screen -->
+    <!-- ── SCREEN 1: Auth ── -->
     <div id="auth-screen" class="auth-screen">
       <div class="auth-card">
         <div class="auth-logo">
           <img src="https://cdn.builder.io/api/v1/image/assets%2Fac94883aaa0849cc897eb61793256164%2Fc284d818569a472aa80fdbee574db744?format=webp&width=800&height=1200" alt="CoderClaw" />
           <span class="auth-logo-text">CoderClawLink</span>
         </div>
-
         <div class="auth-tabs">
           <button class="auth-tab active" data-auth-tab="login">Sign in</button>
           <button class="auth-tab" data-auth-tab="register">Register</button>
         </div>
-
-        <!-- Login form -->
         <form class="auth-form active" id="form-login">
           <div class="form-group">
             <label for="login-email">Email</label>
-            <input id="login-email" class="input" type="email" required placeholder="you@example.com" />
+            <input id="login-email" class="input" type="email" required placeholder="you@example.com" autocomplete="email" />
           </div>
           <div class="form-group">
-            <label for="login-apikey">API Key</label>
-            <input id="login-apikey" class="input" type="password" required placeholder="clk_..." />
-          </div>
-          <div class="form-group">
-            <label for="login-tenant">Tenant ID</label>
-            <input id="login-tenant" class="input" type="number" required placeholder="1" />
+            <label for="login-password">Password</label>
+            <div class="pw-wrap">
+              <input id="login-password" class="input" type="password" required placeholder="••••••••" autocomplete="current-password" />
+              <button type="button" class="pw-eye" aria-label="Show password" data-pw="login-password">👁</button>
+            </div>
           </div>
           <button type="submit" class="btn btn-primary btn-full">Sign in</button>
         </form>
-
-        <!-- Register form -->
         <form class="auth-form" id="form-register">
           <div class="form-group">
             <label for="reg-email">Email</label>
-            <input id="reg-email" class="input" type="email" required placeholder="you@example.com" />
+            <input id="reg-email" class="input" type="email" required placeholder="you@example.com" autocomplete="email" />
           </div>
-          <div id="reg-result" style="display:none; padding:12px; background:var(--surface-cyan-soft); border:1px solid var(--border-accent); border-radius:8px; font-size:13px; color:var(--text-secondary); word-break:break-all;"></div>
+          <div class="form-group">
+            <label for="reg-username">Username</label>
+            <input id="reg-username" class="input" type="text" required placeholder="yourhandle" autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label for="reg-password">Password</label>
+            <div class="pw-wrap">
+              <input id="reg-password" class="input" type="password" required placeholder="••••••••" autocomplete="new-password" />
+              <button type="button" class="pw-eye" aria-label="Show password" data-pw="reg-password">👁</button>
+            </div>
+          </div>
           <button type="submit" class="btn btn-primary btn-full">Create account</button>
         </form>
       </div>
     </div>
 
-    <!-- App screen -->
+    <!-- ── SCREEN 2: Tenant Picker ── -->
+    <div id="picker-screen" style="display:none" class="auth-screen">
+      <div class="auth-card" style="max-width:520px">
+        <div class="auth-logo">
+          <img src="https://cdn.builder.io/api/v1/image/assets%2Fac94883aaa0849cc897eb61793256164%2Fc284d818569a472aa80fdbee574db744?format=webp&width=800&height=1200" alt="CoderClaw" />
+          <span class="auth-logo-text">Select Workspace</span>
+        </div>
+        <p style="text-align:center;color:var(--text-muted);font-size:13px;margin:0 0 20px">Choose a workspace or create a new one.</p>
+        <div id="picker-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px"></div>
+        <button class="btn btn-secondary btn-full" id="btn-show-create-tenant">+ Create new workspace</button>
+        <form id="form-picker-create" style="display:none;margin-top:16px">
+          <div class="form-group">
+            <label for="picker-tenant-name">Workspace name</label>
+            <input id="picker-tenant-name" class="input" type="text" required placeholder="my-team" />
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="btn btn-secondary" id="btn-cancel-create-tenant">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="flex:1">Create workspace</button>
+          </div>
+        </form>
+        <button class="btn-logout" style="margin-top:20px;width:100%;text-align:center;cursor:pointer;background:none;border:none;color:var(--text-muted);font-size:13px" id="btn-picker-logout">← Sign out</button>
+      </div>
+    </div>
+
+    <!-- ── SCREEN 3: App ── -->
     <main id="app-screen" style="display:none">
-      <!-- Toast -->
       <div id="toast" class="toast hidden"></div>
 
-      <!-- Projects view -->
+      <!-- Projects -->
       <div id="view-projects" class="view-panel">
         <div class="view-header">
           <h2>Projects</h2>
-          <div class="actions">
-            <button class="btn btn-primary btn-sm" id="btn-create-project">+ New Project</button>
-          </div>
+          <button class="btn btn-primary btn-sm" id="btn-create-project">+ New Project</button>
         </div>
         <div class="cards-grid" id="projects-grid"></div>
       </div>
 
-      <!-- Tasks view -->
+      <!-- Tasks -->
       <div id="view-tasks" class="view-panel" style="display:none">
         <div class="view-header">
           <h2>Tasks</h2>
           <div class="actions filters-bar">
-            <select id="task-project-filter" class="select" style="width:200px">
-              <option value="">All Projects</option>
-            </select>
+            <select id="task-project-filter" class="select" style="width:200px"><option value="">All Projects</option></select>
             <button class="btn btn-primary btn-sm" id="btn-create-task">+ New Task</button>
           </div>
         </div>
         <div class="kanban-board">
           <div class="kanban-column">
-            <div class="column-header">
-              <span class="badge badge-todo">To Do</span>
-              <span class="count-badge" id="count-todo">0</span>
-            </div>
+            <div class="column-header"><span class="badge badge-todo">To Do</span><span class="count-badge" id="count-todo">0</span></div>
             <div id="col-todo"></div>
           </div>
           <div class="kanban-column">
-            <div class="column-header">
-              <span class="badge badge-in_progress">In Progress</span>
-              <span class="count-badge" id="count-in_progress">0</span>
-            </div>
+            <div class="column-header"><span class="badge badge-in_progress">In Progress</span><span class="count-badge" id="count-in_progress">0</span></div>
             <div id="col-in_progress"></div>
           </div>
           <div class="kanban-column">
-            <div class="column-header">
-              <span class="badge badge-in_review">In Review</span>
-              <span class="count-badge" id="count-in_review">0</span>
-            </div>
+            <div class="column-header"><span class="badge badge-in_review">In Review</span><span class="count-badge" id="count-in_review">0</span></div>
             <div id="col-in_review"></div>
           </div>
           <div class="kanban-column">
-            <div class="column-header">
-              <span class="badge badge-done">Done</span>
-              <span class="count-badge" id="count-done">0</span>
-            </div>
+            <div class="column-header"><span class="badge badge-done">Done</span><span class="count-badge" id="count-done">0</span></div>
             <div id="col-done"></div>
           </div>
         </div>
       </div>
 
-      <!-- Tenants view -->
-      <div id="view-tenants" class="view-panel" style="display:none">
+      <!-- Claws -->
+      <div id="view-claws" class="view-panel" style="display:none">
         <div class="view-header">
-          <h2>Tenants</h2>
-          <div class="actions">
-            <button class="btn btn-primary btn-sm" id="btn-create-tenant">+ New Tenant</button>
-          </div>
+          <h2>CoderClaw Instances <span style="font-size:13px;font-weight:400;color:var(--text-muted)">— your mesh</span></h2>
+          <button class="btn btn-primary btn-sm" id="btn-register-claw">+ Register Claw</button>
         </div>
-        <div class="cards-grid" id="tenants-grid"></div>
+        <div id="claw-key-banner" style="display:none;padding:16px;margin-bottom:16px;background:rgba(0,212,255,.08);border:1px solid rgba(0,255,255,.2);border-radius:12px;font-size:13px">
+          <strong style="display:block;margin-bottom:6px">🔑 Save this API key — it will not be shown again</strong>
+          <code id="claw-key-val" style="font-family:monospace;color:#0ff;word-break:break-all;display:block;margin-bottom:10px"></code>
+          <p style="color:var(--text-muted);margin:0 0 8px;font-size:12px">Paste this into your CoderClaw config file as <code>CODERCLAW_API_KEY</code>.</p>
+          <button class="btn btn-sm btn-secondary" id="btn-dismiss-key">Dismiss</button>
+        </div>
+        <div class="cards-grid" id="claws-grid"></div>
       </div>
 
-      <!-- Agents view -->
-      <div id="view-agents" class="view-panel" style="display:none">
+      <!-- Skills -->
+      <div id="view-skills" class="view-panel" style="display:none">
         <div class="view-header">
-          <h2>Agents</h2>
+          <h2>Skills</h2>
+          <div class="actions filters-bar">
+            <select id="skill-scope-filter" class="select" style="width:200px">
+              <option value="marketplace">All marketplace skills</option>
+              <option value="tenant">Assigned to workspace</option>
+            </select>
+          </div>
         </div>
+        <div class="cards-grid" id="skills-grid"></div>
+      </div>
+
+      <!-- Agents -->
+      <div id="view-agents" class="view-panel" style="display:none">
+        <div class="view-header"><h2>AI Agents</h2></div>
         <div class="cards-grid" id="agents-grid"></div>
+      </div>
+
+      <!-- Workspace -->
+      <div id="view-tenants" class="view-panel" style="display:none">
+        <div class="view-header">
+          <h2>Workspace</h2>
+          <button class="btn btn-secondary btn-sm" id="btn-switch-workspace">Switch workspace</button>
+        </div>
+        <div id="workspace-info"></div>
+        <div class="view-header" style="margin-top:24px">
+          <h3 style="font-size:16px;margin:0">Members</h3>
+          <button class="btn btn-primary btn-sm" id="btn-invite-member">+ Invite member</button>
+        </div>
+        <div class="cards-grid" id="members-grid"></div>
       </div>
     </main>
   </div>
 
   <!-- ── Modals ── -->
 
-  <!-- Create Project -->
   <div id="modal-create-project" class="modal" role="dialog" aria-modal="true">
     <div class="modal-content">
-      <div class="modal-header">
-        <h3>New Project</h3>
-        <button class="close-btn" data-close="modal-create-project">&times;</button>
-      </div>
+      <div class="modal-header"><h3>New Project</h3><button class="close-btn" data-close="modal-create-project">&times;</button></div>
       <form class="modal-form" id="form-create-project">
-        <div class="form-group">
-          <label for="inp-proj-key">Key <span class="required">*</span></label>
-          <input id="inp-proj-key" name="key" class="input" type="text" required maxlength="50" placeholder="PROJ" />
-        </div>
-        <div class="form-group">
-          <label for="inp-proj-name">Name <span class="required">*</span></label>
-          <input id="inp-proj-name" name="name" class="input" type="text" required maxlength="255" />
-        </div>
-        <div class="form-group">
-          <label for="inp-proj-desc">Description</label>
-          <textarea id="inp-proj-desc" name="description" class="input" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="inp-proj-github">GitHub URL</label>
-          <input id="inp-proj-github" name="githubRepoUrl" class="input" type="url" placeholder="https://github.com/owner/repo" />
-        </div>
+        <div class="form-group"><label>Key *</label><input name="key" class="input" type="text" required maxlength="50" placeholder="PROJ" /></div>
+        <div class="form-group"><label>Name *</label><input name="name" class="input" type="text" required maxlength="255" /></div>
+        <div class="form-group"><label>Description</label><textarea name="description" class="input" rows="3"></textarea></div>
+        <div class="form-group"><label>GitHub URL</label><input name="githubRepoUrl" class="input" type="url" placeholder="https://github.com/owner/repo" /></div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" data-close="modal-create-project">Cancel</button>
           <button type="submit" class="btn btn-primary">Create</button>
@@ -207,43 +230,18 @@
     </div>
   </div>
 
-  <!-- Create Task -->
   <div id="modal-create-task" class="modal" role="dialog" aria-modal="true">
     <div class="modal-content">
-      <div class="modal-header">
-        <h3>New Task</h3>
-        <button class="close-btn" data-close="modal-create-task">&times;</button>
-      </div>
+      <div class="modal-header"><h3>New Task</h3><button class="close-btn" data-close="modal-create-task">&times;</button></div>
       <form class="modal-form" id="form-create-task">
+        <div class="form-group"><label>Project *</label><select id="inp-task-proj" name="projectId" class="select" required></select></div>
+        <div class="form-group"><label>Title *</label><input name="title" class="input" type="text" required maxlength="500" /></div>
+        <div class="form-group"><label>Description</label><textarea name="description" class="input" rows="3"></textarea></div>
         <div class="form-group">
-          <label for="inp-task-proj">Project <span class="required">*</span></label>
-          <select id="inp-task-proj" name="projectId" class="select" required></select>
-        </div>
-        <div class="form-group">
-          <label for="inp-task-title">Title <span class="required">*</span></label>
-          <input id="inp-task-title" name="title" class="input" type="text" required maxlength="500" />
-        </div>
-        <div class="form-group">
-          <label for="inp-task-desc">Description</label>
-          <textarea id="inp-task-desc" name="description" class="input" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="inp-task-priority">Priority</label>
-          <select id="inp-task-priority" name="priority" class="select">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-            <option value="critical">Critical</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="inp-task-agent">Agent type</label>
-          <select id="inp-task-agent" name="assignedAgentType" class="select">
-            <option value="">None</option>
-            <option value="claude">Claude</option>
-            <option value="openai">OpenAI</option>
-            <option value="ollama">Ollama</option>
-            <option value="http">HTTP</option>
+          <label>Priority</label>
+          <select name="priority" class="select">
+            <option value="low">Low</option><option value="medium" selected>Medium</option>
+            <option value="high">High</option><option value="critical">Critical</option>
           </select>
         </div>
         <div class="form-actions">
@@ -254,21 +252,53 @@
     </div>
   </div>
 
-  <!-- Create Tenant -->
-  <div id="modal-create-tenant" class="modal" role="dialog" aria-modal="true">
+  <div id="modal-register-claw" class="modal" role="dialog" aria-modal="true">
     <div class="modal-content">
-      <div class="modal-header">
-        <h3>New Tenant</h3>
-        <button class="close-btn" data-close="modal-create-tenant">&times;</button>
+      <div class="modal-header"><h3>Register CoderClaw</h3><button class="close-btn" data-close="modal-register-claw">&times;</button></div>
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px">Give this instance a name. You will receive a one-time API key to paste into your claw config.</p>
+      <form class="modal-form" id="form-register-claw">
+        <div class="form-group"><label>Name *</label><input name="name" class="input" type="text" required maxlength="255" placeholder="e.g. dev-macbook, server-01" /></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" data-close="modal-register-claw">Cancel</button>
+          <button type="submit" class="btn btn-primary">Register &amp; get key</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-assign-skill" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header"><h3>Assign Skill</h3><button class="close-btn" data-close="modal-assign-skill">&times;</button></div>
+      <p style="font-size:13px;color:var(--text-muted);margin:0 0 4px">Assigning: <strong id="assign-skill-name"></strong></p>
+      <input type="hidden" id="assign-skill-slug" />
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+        <button class="btn btn-primary" id="btn-assign-tenant">Assign to entire workspace</button>
+        <p style="font-size:12px;color:var(--text-muted);margin:4px 0">Or assign to an individual claw:</p>
+        <div id="assign-claw-list" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
-      <form class="modal-form" id="form-create-tenant">
+      <div class="form-actions" style="margin-top:16px">
+        <button type="button" class="btn btn-secondary" data-close="modal-assign-skill">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-invite-member" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-content">
+      <div class="modal-header"><h3>Invite Member</h3><button class="close-btn" data-close="modal-invite-member">&times;</button></div>
+      <form class="modal-form" id="form-invite-member">
+        <div class="form-group"><label>User ID (UUID)</label><input name="newUserId" class="input" type="text" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" /></div>
         <div class="form-group">
-          <label for="inp-tenant-name">Name <span class="required">*</span></label>
-          <input id="inp-tenant-name" name="name" class="input" type="text" required maxlength="255" />
+          <label>Role</label>
+          <select name="role" class="select">
+            <option value="viewer">Viewer</option>
+            <option value="developer" selected>Developer</option>
+            <option value="manager">Manager</option>
+            <option value="owner">Owner</option>
+          </select>
         </div>
         <div class="form-actions">
-          <button type="button" class="btn btn-secondary" data-close="modal-create-tenant">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create</button>
+          <button type="button" class="btn btn-secondary" data-close="modal-invite-member">Cancel</button>
+          <button type="submit" class="btn btn-primary">Invite</button>
         </div>
       </form>
     </div>

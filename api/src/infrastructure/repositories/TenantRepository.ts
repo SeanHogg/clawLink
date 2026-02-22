@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { ITenantRepository } from '../../domain/tenant/ITenantRepository';
 import { Tenant, TenantMemberProps } from '../../domain/tenant/Tenant';
 import { TenantId, TenantStatus, TenantRole, asTenantId } from '../../domain/shared/types';
@@ -29,6 +29,20 @@ export class TenantRepository implements ITenantRepository {
       .where(eq(tenantsTable.slug, slug))
       .limit(1);
     return row ? this.hydrateMembers(row) : null;
+  }
+
+  async findByUserId(userId: string): Promise<Tenant[]> {
+    const memberRows = await this.db
+      .select({ tenantId: membersTable.tenantId })
+      .from(membersTable)
+      .where(eq(membersTable.userId, userId));
+    if (!memberRows.length) return [];
+    const tenantIds = memberRows.map(r => r.tenantId);
+    const rows = await this.db
+      .select()
+      .from(tenantsTable)
+      .where(inArray(tenantsTable.id, tenantIds));
+    return Promise.all(rows.map(r => this.hydrateMembers(r)));
   }
 
   async save(tenant: Tenant): Promise<Tenant> {
