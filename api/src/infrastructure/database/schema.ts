@@ -60,41 +60,37 @@ export const auditEventTypeEnum = pgEnum('audit_event_type', [
 ]);
 
 // ---------------------------------------------------------------------------
-// CoderClawLink orchestration users (separate from the marketplace users table)
-// Table name: ccl_users
+// ---------------------------------------------------------------------------
+// Tables
 // ---------------------------------------------------------------------------
 
-export const users = pgTable('ccl_users', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  email:      varchar('email', { length: 255 }).notNull().unique(),
-  apiKeyHash: varchar('api_key_hash', { length: 64 }).notNull(),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-});
-
-// ---------------------------------------------------------------------------
-// Marketplace tables � these map to the EXISTING tables created by coderclaw.ai
-// ---------------------------------------------------------------------------
-
-/** Public marketplace users (email + password, existing `users` table) */
-export const marketplaceUsers = pgTable('users', {
-  id:           uuid('id').primaryKey().defaultRandom(),
-  email:        text('email').notNull().unique(),
-  username:     text('username').notNull().unique(),
-  displayName:  text('display_name'),
-  avatarUrl:    text('avatar_url'),
+/**
+ * Unified users table. Supports both API-key users (SDK/CLI) and web/
+ * marketplace users (email + password).
+ */
+export const users = pgTable('users', {
+  id:           varchar('id', { length: 36 }).primaryKey(),
+  email:        varchar('email', { length: 255 }).notNull().unique(),
+  apiKeyHash:   varchar('api_key_hash', { length: 64 }),
+  username:     varchar('username', { length: 100 }).unique(),
+  displayName:  varchar('display_name', { length: 255 }),
+  avatarUrl:    varchar('avatar_url', { length: 500 }),
   bio:          text('bio'),
-  passwordHash: text('password_hash').notNull(),
-  createdAt:    timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt:    timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  passwordHash: varchar('password_hash', { length: 255 }),
+  createdAt:    timestamp('created_at').notNull().defaultNow(),
+  updatedAt:    timestamp('updated_at').notNull().defaultNow(),
 });
 
-/** Marketplace skills (existing `skills` table) */
-export const marketplaceSkills = pgTable('skills', {
+// ---------------------------------------------------------------------------
+// Marketplace tables
+// ---------------------------------------------------------------------------
+
+export const marketplaceSkills = pgTable('marketplace_skills', {
   id:           serial('id').primaryKey(),
   name:         varchar('name', { length: 255 }).notNull(),
   slug:         varchar('slug', { length: 255 }).notNull().unique(),
   description:  text('description'),
-  authorId:     uuid('author_id').notNull().references(() => marketplaceUsers.id, { onDelete: 'cascade' }),
+  authorId:     varchar('author_id', { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
   category:     varchar('category', { length: 100 }).notNull(),
   tags:         text('tags'),
   version:      varchar('version', { length: 50 }).notNull().default('1.0.0'),
@@ -109,16 +105,15 @@ export const marketplaceSkills = pgTable('skills', {
   updatedAt:    timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Marketplace skill likes (existing `skill_likes` table) */
-export const marketplaceSkillLikes = pgTable('skill_likes', {
-  userId:    uuid('user_id').notNull().references(() => marketplaceUsers.id, { onDelete: 'cascade' }),
+export const marketplaceSkillLikes = pgTable('marketplace_skill_likes', {
+  userId:    varchar('user_id', { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
   skillSlug: varchar('skill_slug', { length: 255 }).notNull(),
 }, (t) => [
   primaryKey({ columns: [t.userId, t.skillSlug] }),
 ]);
 
 // ---------------------------------------------------------------------------
-// CoderClawLink Orchestration tables (new tables)
+// Orchestration tables
 // ---------------------------------------------------------------------------
 
 export const tenants = pgTable('tenants', {
@@ -133,7 +128,7 @@ export const tenants = pgTable('tenants', {
 export const tenantMembers = pgTable('tenant_members', {
   id:        serial('id').primaryKey(),
   tenantId:  integer('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId:    varchar('user_id', { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
   role:      tenantRoleEnum('role').notNull().default('developer'),
   isActive:  boolean('is_active').notNull().default(true),
   joinedAt:  timestamp('joined_at').notNull().defaultNow(),
@@ -181,8 +176,7 @@ export const agents = pgTable('agents', {
   updatedAt:  timestamp('updated_at').notNull().defaultNow(),
 });
 
-/** Agent skills (new table: agent_skills) � different from marketplace skills */
-export const skills = pgTable('agent_skills', {
+export const skills = pgTable('skills', {
   id:           serial('id').primaryKey(),
   agentId:      integer('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
   name:         varchar('name', { length: 255 }).notNull(),
@@ -197,7 +191,7 @@ export const executions = pgTable('executions', {
   taskId:       integer('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
   agentId:      integer('agent_id').references(() => agents.id),
   tenantId:     integer('tenant_id').notNull().references(() => tenants.id),
-  submittedBy:  uuid('submitted_by').notNull(),
+  submittedBy:  varchar('submitted_by', { length: 36 }).notNull(),
   status:       executionStatusEnum('status').notNull().default('pending'),
   payload:      text('payload'),
   result:       text('result'),
@@ -211,7 +205,7 @@ export const executions = pgTable('executions', {
 export const auditEvents = pgTable('audit_events', {
   id:           serial('id').primaryKey(),
   tenantId:     integer('tenant_id').references(() => tenants.id),
-  userId:       uuid('user_id'),
+  userId:       varchar('user_id', { length: 36 }),
   eventType:    auditEventTypeEnum('event_type').notNull(),
   resourceType: varchar('resource_type', { length: 100 }),
   resourceId:   varchar('resource_id', { length: 100 }),

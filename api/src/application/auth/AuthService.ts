@@ -19,7 +19,7 @@ export interface RegisterDto {
 
 export interface RegisterResult {
   user:   { id: string; email: string };
-  apiKey: string; // shown once – plaintext
+  apiKey: string; // shown once ï¿½ plaintext
 }
 
 export interface LoginResult {
@@ -134,6 +134,7 @@ export class AuthService {
     const user = await this.users.save(
       User.createWeb(dto.email, dto.username, pwHash, keyHash),
     );
+
 
     const expiresIn = 86_400;
     const token = await signWebJwt(

@@ -22,6 +22,5 @@ export function errorHandler(err: Error, c: Context): Response {
 
   // Unexpected errors – avoid leaking internals in production
   console.error('[unhandled]', err);
-  const msg = err instanceof Error ? err.message : String(err);
-  return c.json({ error: 'Internal server error', detail: msg }, 500);
+  return c.json({ error: 'Internal server error' }, 500);
 }
