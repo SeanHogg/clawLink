@@ -182,7 +182,6 @@ export function createMarketplaceRoutes(db: Db): Hono<HonoEnv> {
       },
     });
   });
-  });
 
   /**
    * GET /marketplace/auth/me – return current user profile (auth required)

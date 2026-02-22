@@ -72,7 +72,7 @@ export const users = pgTable('ccl_users', {
 });
 
 // ---------------------------------------------------------------------------
-// Marketplace tables – these map to the EXISTING tables created by coderclaw.ai
+// Marketplace tables ï¿½ these map to the EXISTING tables created by coderclaw.ai
 // ---------------------------------------------------------------------------
 
 /** Public marketplace users (email + password, existing `users` table) */
@@ -181,7 +181,7 @@ export const agents = pgTable('agents', {
   updatedAt:  timestamp('updated_at').notNull().defaultNow(),
 });
 
-/** Agent skills (new table: agent_skills) – different from marketplace skills */
+/** Agent skills (new table: agent_skills) ï¿½ different from marketplace skills */
 export const skills = pgTable('agent_skills', {
   id:           serial('id').primaryKey(),
   agentId:      integer('agent_id').notNull().references(() => agents.id, { onDelete: 'cascade' }),
