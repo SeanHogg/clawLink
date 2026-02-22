@@ -283,7 +283,6 @@ function loadView(name) {
   if (name === 'tasks')    loadTasks();
   if (name === 'claws')    loadClaws();
   if (name === 'skills')   loadSkills();
-  if (name === 'agents')   loadAgents();
   if (name === 'tenants')  loadWorkspace();
 }
 
@@ -548,33 +547,6 @@ $('btn-assign-tenant').addEventListener('click', async () => {
     toast('Skill assigned to entire workspace'); closeModal('modal-assign-skill');
   } catch (err) { toast(err.message, 'error'); }
 });
-
-// ── Agents ────────────────────────────────────────────────────────────────────
-async function loadAgents() {
-  const grid = $('agents-grid');
-  grid.innerHTML = `<div class="loading-row"><span class="spinner"></span> Loading…</div>`;
-  try {
-    const data   = await api('GET', '/api/agents');
-    const agents = data?.agents ?? [];
-    if (!agents.length) {
-      grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🤖</div><div class="empty-title">No AI agents configured</div><div class="empty-desc">AI agents connect via the API (Claude, OpenAI, Ollama, HTTP).</div></div>`;
-      return;
-    }
-    grid.innerHTML = agents.map(a => `
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">${esc(a.name)}</span>
-          <span class="badge ${a.isActive ? 'badge-done' : 'badge-todo'}">${a.isActive ? 'active' : 'inactive'}</span>
-        </div>
-        <div class="card-footer">
-          <span class="badge badge-in_progress">${esc(a.type)}</span>
-          <span class="card-meta">${esc(a.endpoint ?? '')}</span>
-        </div>
-      </div>`).join('');
-  } catch (err) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-title">Error</div><div class="empty-desc">${esc(err.message)}</div></div>`;
-  }
-}
 
 // ── Workspace ─────────────────────────────────────────────────────────────────
 async function loadWorkspace() {
