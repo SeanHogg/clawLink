@@ -36,6 +36,7 @@ export class AgentRepository implements IAgentRepository {
         config:     plain.config ?? undefined,
       })
       .returning();
+    if (!inserted) throw new Error('Agent insert returned no rows');
     return toDomain(inserted);
   }
 
@@ -52,6 +53,7 @@ export class AgentRepository implements IAgentRepository {
       })
       .where(eq(agentsTable.id, plain.id))
       .returning();
+    if (!updated) throw new Error('Agent update returned no rows');
     return toDomain(updated);
   }
 }

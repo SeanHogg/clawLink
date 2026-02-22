@@ -35,7 +35,10 @@ export function createProjectRoutes(projectService: ProjectService): Hono<HonoEn
       description?: string | null;
       githubRepoUrl?: string | null;
     }>();
-    const project = await projectService.createProject(body);
+    const project = await projectService.createProject({
+      ...body,
+      tenantId: c.get('tenantId'),
+    });
     return c.json(project.toPlain(), 201);
   });
 

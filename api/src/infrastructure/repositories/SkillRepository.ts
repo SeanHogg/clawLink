@@ -39,6 +39,7 @@ export class SkillRepository implements ISkillRepository {
         outputSchema: plain.outputSchema ?? undefined,
       })
       .returning();
+    if (!inserted) throw new Error('Skill insert returned no rows');
     return toDomain(inserted);
   }
 }

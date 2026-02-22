@@ -1,17 +1,18 @@
-import { ProjectId, ProjectStatus } from '../shared/types';
+import { ProjectId, ProjectStatus, TenantId } from '../shared/types';
 import { ValidationError } from '../shared/errors';
 
 export interface ProjectProps {
-  id: ProjectId;
-  key: string;
-  name: string;
-  description: string | null;
-  status: ProjectStatus;
-  githubRepoUrl: string | null;
+  id:              ProjectId;
+  tenantId:        TenantId;
+  key:             string;
+  name:            string;
+  description:     string | null;
+  status:          ProjectStatus;
+  githubRepoUrl:   string | null;
   githubRepoOwner: string | null;
-  githubRepoName: string | null;
-  createdAt: Date;
-  updatedAt: Date;
+  githubRepoName:  string | null;
+  createdAt:       Date;
+  updatedAt:       Date;
 }
 
 /**
@@ -57,8 +58,9 @@ export class Project {
   // Accessors
   // ------------------------------------------------------------------
 
-  get id(): ProjectId { return this.props.id; }
-  get key(): string { return this.props.key; }
+  get id():              ProjectId  { return this.props.id; }
+  get tenantId():        TenantId   { return this.props.tenantId; }
+  get key():             string     { return this.props.key; }
   get name(): string { return this.props.name; }
   get description(): string | null { return this.props.description; }
   get status(): ProjectStatus { return this.props.status; }

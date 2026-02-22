@@ -2,8 +2,8 @@ import type { TenantRole } from './domain/shared/types';
 
 /** Cloudflare Worker environment bindings for the API worker. */
 export interface Env {
-  /** Hyperdrive binding – connection-pooled Postgres. */
-  HYPERDRIVE: Hyperdrive;
+  /** Postgres connection string. Set via `wrangler secret put DATABASE_URL`. */
+  DATABASE_URL: string;
   /** Comma-separated allowed CORS origins, e.g. "https://app.coderclaw.ai" */
   CORS_ORIGINS: string;
   /** "production" | "development" */

@@ -73,7 +73,9 @@ export async function verifyJwt(token: string, secret: string): Promise<JwtPaylo
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Malformed token');
 
-  const [header, body, sig] = parts;
+  const header = parts[0]!;
+  const body   = parts[1]!;
+  const sig    = parts[2]!;
   const input = `${header}.${body}`;
 
   const key = await importKey(secret);

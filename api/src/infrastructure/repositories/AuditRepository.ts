@@ -21,6 +21,7 @@ export class AuditRepository implements IAuditRepository {
         metadata:     plain.metadata ?? undefined,
       })
       .returning();
+    if (!inserted) throw new Error('Audit insert returned no rows');
     return toDomain(inserted);
   }
 

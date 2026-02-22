@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { IProjectRepository } from '../../domain/project/IProjectRepository';
 import { Project, ProjectProps } from '../../domain/project/Project';
-import { ProjectId, ProjectStatus, asProjectId } from '../../domain/shared/types';
+import { ProjectId, ProjectStatus, TenantId, asProjectId, asTenantId } from '../../domain/shared/types';
 import { projects as projectsTable } from '../database/schema';
 import type { Db } from '../database/connection';
 
@@ -42,6 +42,7 @@ export class ProjectRepository implements IProjectRepository {
     const [inserted] = await this.db
       .insert(projectsTable)
       .values({
+        tenantId:        plain.tenantId,
         key:             plain.key,
         name:            plain.name,
         description:     plain.description ?? undefined,
@@ -88,6 +89,7 @@ type Row = typeof projectsTable.$inferSelect;
 function toDomain(row: Row): Project {
   return Project.reconstitute({
     id:              asProjectId(row.id),
+    tenantId:        asTenantId(row.tenantId),
     key:             row.key,
     name:            row.name,
     description:     row.description ?? null,

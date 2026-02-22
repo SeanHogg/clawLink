@@ -39,6 +39,7 @@ export class UserRepository implements IUserRepository {
         apiKeyHash: plain.apiKeyHash,
       })
       .returning();
+    if (!inserted) throw new Error('User insert returned no rows');
     return toDomain(inserted);
   }
 }

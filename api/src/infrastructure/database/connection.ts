@@ -6,16 +6,14 @@ import type { Env } from '../../env';
 export type Db = PostgresJsDatabase<typeof schema>;
 
 /**
- * Build a Drizzle database instance from a Cloudflare Hyperdrive binding.
+ * Build a Drizzle database instance from the DATABASE_URL secret.
  *
- * Hyperdrive provides a connection-pooled, authenticated connection string
- * pointing to the real Postgres instance.  Using `max: 1` is required inside
- * a Cloudflare Worker because persistent connections are not supported.
+ * Using `max: 1` is required inside a Cloudflare Worker because persistent
+ * connections are not supported across requests.
  */
 export function buildDatabase(env: Env): Db {
-  const client = postgres(env.HYPERDRIVE.connectionString, {
+  const client = postgres(env.DATABASE_URL, {
     max: 1,
-    // Disable prepare – Hyperdrive proxies do not support extended query protocol.
     prepare: false,
   });
   return drizzle(client, { schema });

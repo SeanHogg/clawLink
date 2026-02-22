@@ -1,12 +1,13 @@
 import { IProjectRepository } from '../../domain/project/IProjectRepository';
 import { Project } from '../../domain/project/Project';
-import { ProjectId, ProjectStatus, asProjectId } from '../../domain/shared/types';
+import { ProjectId, ProjectStatus, TenantId, asProjectId, asTenantId } from '../../domain/shared/types';
 import { NotFoundError, ConflictError } from '../../domain/shared/errors';
 
 export interface CreateProjectDto {
-  key: string;
-  name: string;
-  description?: string | null;
+  tenantId:       number;
+  key:            string;
+  name:           string;
+  description?:   string | null;
   githubRepoUrl?: string | null;
 }
 
@@ -45,6 +46,7 @@ export class ProjectService {
     const { githubRepoOwner, githubRepoName } = parseGithubUrl(dto.githubRepoUrl ?? null);
 
     const project = Project.create({
+      tenantId: asTenantId(dto.tenantId),
       key: dto.key,
       name: dto.name,
       description: dto.description ?? null,

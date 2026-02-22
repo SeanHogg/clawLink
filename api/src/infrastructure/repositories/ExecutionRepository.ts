@@ -46,6 +46,7 @@ export class ExecutionRepository implements IExecutionRepository {
         payload:     plain.payload ?? undefined,
       })
       .returning();
+    if (!inserted) throw new Error('Execution insert returned no rows');
     return toDomain(inserted);
   }
 
@@ -63,6 +64,7 @@ export class ExecutionRepository implements IExecutionRepository {
       })
       .where(eq(executionsTable.id, plain.id))
       .returning();
+    if (!updated) throw new Error('Execution update returned no rows');
     return toDomain(updated);
   }
 }
