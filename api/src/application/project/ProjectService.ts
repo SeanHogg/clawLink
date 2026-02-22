@@ -1,7 +1,7 @@
 import { IProjectRepository } from '../../domain/project/IProjectRepository';
 import { Project } from '../../domain/project/Project';
 import { ProjectId, ProjectStatus, TenantId, asProjectId, asTenantId } from '../../domain/shared/types';
-import { NotFoundError, ConflictError } from '../../domain/shared/errors';
+import { NotFoundError, ConflictError, ForbiddenError } from '../../domain/shared/errors';
 
 export interface CreateProjectDto {
   tenantId:       number;
@@ -27,13 +27,14 @@ export interface UpdateProjectDto {
 export class ProjectService {
   constructor(private readonly projects: IProjectRepository) {}
 
-  async listProjects(): Promise<Project[]> {
-    return this.projects.findAll();
+  async listProjects(tenantId: number): Promise<Project[]> {
+    return this.projects.findByTenant(asTenantId(tenantId));
   }
 
-  async getProject(id: number): Promise<Project> {
+  async getProject(id: number, callerTenantId: number): Promise<Project> {
     const project = await this.projects.findById(asProjectId(id));
     if (!project) throw new NotFoundError('Project', id);
+    if (project.tenantId !== callerTenantId) throw new ForbiddenError('Project belongs to a different workspace');
     return project;
   }
 
@@ -59,8 +60,8 @@ export class ProjectService {
     return this.projects.save(project);
   }
 
-  async updateProject(id: number, dto: UpdateProjectDto): Promise<Project> {
-    const project = await this.getProject(id);
+  async updateProject(id: number, dto: UpdateProjectDto, callerTenantId: number): Promise<Project> {
+    const project = await this.getProject(id, callerTenantId);
 
     const { githubRepoOwner, githubRepoName } = dto.githubRepoUrl !== undefined
       ? parseGithubUrl(dto.githubRepoUrl)
@@ -78,8 +79,8 @@ export class ProjectService {
     return this.projects.update(updated);
   }
 
-  async deleteProject(id: number): Promise<void> {
-    await this.getProject(id); // throws NotFoundError if missing
+  async deleteProject(id: number, callerTenantId: number): Promise<void> {
+    await this.getProject(id, callerTenantId); // throws NotFoundError or ForbiddenError
     await this.projects.delete(asProjectId(id));
   }
 }

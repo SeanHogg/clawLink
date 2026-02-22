@@ -361,7 +361,7 @@ $('form-create-project').addEventListener('submit', async (e) => {
       key: fd.get('key'), name: fd.get('name'),
       description: fd.get('description') || undefined,
       githubRepoUrl: fd.get('githubRepoUrl') || undefined,
-      tenantId,
+      // tenantId is derived server-side from the JWT — never sent by client
     });
     closeModal('modal-create-project'); e.target.reset();
     toast('Project created'); loadProjects();

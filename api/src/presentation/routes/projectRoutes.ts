@@ -16,14 +16,14 @@ export function createProjectRoutes(projectService: ProjectService): Hono<HonoEn
 
   // GET /api/projects
   router.get('/', async (c) => {
-    const projects = await projectService.listProjects();
-    return c.json(projects.map(p => p.toPlain()));
+    const projects = await projectService.listProjects(c.get('tenantId'));
+    return c.json({ projects: projects.map(p => p.toPlain()) });
   });
 
   // GET /api/projects/:id
   router.get('/:id', async (c) => {
     const id = Number(c.req.param('id'));
-    const project = await projectService.getProject(id);
+    const project = await projectService.getProject(id, c.get('tenantId'));
     return c.json(project.toPlain());
   });
 
@@ -36,8 +36,11 @@ export function createProjectRoutes(projectService: ProjectService): Hono<HonoEn
       githubRepoUrl?: string | null;
     }>();
     const project = await projectService.createProject({
-      ...body,
-      tenantId: c.get('tenantId'),
+      key:           body.key,
+      name:          body.name,
+      description:   body.description,
+      githubRepoUrl: body.githubRepoUrl,
+      tenantId:      c.get('tenantId'),   // always from JWT, never from body
     });
     return c.json(project.toPlain(), 201);
   });
@@ -46,14 +49,14 @@ export function createProjectRoutes(projectService: ProjectService): Hono<HonoEn
   router.patch('/:id', async (c) => {
     const id = Number(c.req.param('id'));
     const body = await c.req.json();
-    const project = await projectService.updateProject(id, body);
+    const project = await projectService.updateProject(id, body, c.get('tenantId'));
     return c.json(project.toPlain());
   });
 
   // DELETE /api/projects/:id
   router.delete('/:id', async (c) => {
     const id = Number(c.req.param('id'));
-    await projectService.deleteProject(id);
+    await projectService.deleteProject(id, c.get('tenantId'));
     return c.body(null, 204);
   });
 

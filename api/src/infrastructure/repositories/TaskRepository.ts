@@ -1,4 +1,4 @@
-import { eq, count } from 'drizzle-orm';
+import { eq, count, inArray } from 'drizzle-orm';
 import { ITaskRepository } from '../../domain/task/ITaskRepository';
 import { Task } from '../../domain/task/Task';
 import {
@@ -16,6 +16,15 @@ export class TaskRepository implements ITaskRepository {
     const rows = projectId !== undefined
       ? await query.where(eq(tasksTable.projectId, projectId))
       : await query;
+    return rows.map(toDomain);
+  }
+
+  async findByProjectIds(ids: ProjectId[]): Promise<Task[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(tasksTable)
+      .where(inArray(tasksTable.projectId, ids));
     return rows.map(toDomain);
   }
 

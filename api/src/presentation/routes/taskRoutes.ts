@@ -12,8 +12,8 @@ export function createTaskRoutes(taskService: TaskService): Hono<HonoEnv> {
   router.get('/', async (c) => {
     const projectIdParam = c.req.query('project_id');
     const projectId = projectIdParam ? Number(projectIdParam) : undefined;
-    const tasks = await taskService.listTasks(projectId);
-    return c.json(tasks.map(t => t.toPlain()));
+    const tasks = await taskService.listTasks(c.get('tenantId'), projectId);
+    return c.json({ tasks: tasks.map(t => t.toPlain()) });
   });
 
   // GET /api/tasks/:id
@@ -32,7 +32,7 @@ export function createTaskRoutes(taskService: TaskService): Hono<HonoEnv> {
       priority?: TaskPriority;
       assignedAgentType?: AgentType | null;
     }>();
-    const task = await taskService.createTask(body);
+    const task = await taskService.createTask(body, c.get('tenantId'));
     return c.json(task.toPlain(), 201);
   });
 

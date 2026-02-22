@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { IProjectRepository } from '../../domain/project/IProjectRepository';
 import { Project, ProjectProps } from '../../domain/project/Project';
 import { ProjectId, ProjectStatus, TenantId, asProjectId, asTenantId } from '../../domain/shared/types';
@@ -14,8 +14,11 @@ import type { Db } from '../database/connection';
 export class ProjectRepository implements IProjectRepository {
   constructor(private readonly db: Db) {}
 
-  async findAll(): Promise<Project[]> {
-    const rows = await this.db.select().from(projectsTable);
+  async findByTenant(tenantId: TenantId): Promise<Project[]> {
+    const rows = await this.db
+      .select()
+      .from(projectsTable)
+      .where(eq(projectsTable.tenantId, tenantId));
     return rows.map(toDomain);
   }
 

@@ -2,10 +2,10 @@ import { ITaskRepository } from '../../domain/task/ITaskRepository';
 import { IProjectRepository } from '../../domain/project/IProjectRepository';
 import { Task } from '../../domain/task/Task';
 import {
-  ProjectId, TaskId, TaskStatus, TaskPriority, AgentType,
-  asProjectId, asTaskId,
+  ProjectId, TaskId, TaskStatus, TaskPriority, AgentType, TenantId,
+  asProjectId, asTaskId, asTenantId,
 } from '../../domain/shared/types';
-import { NotFoundError } from '../../domain/shared/errors';
+import { NotFoundError, ForbiddenError } from '../../domain/shared/errors';
 
 export interface CreateTaskDto {
   projectId: number;
@@ -36,8 +36,18 @@ export class TaskService {
     private readonly projects: IProjectRepository,
   ) {}
 
-  async listTasks(projectId?: number): Promise<Task[]> {
-    return this.tasks.findAll(projectId !== undefined ? asProjectId(projectId) : undefined);
+  /** List tasks scoped to the caller's tenant. Optionally narrow by project. */
+  async listTasks(callerTenantId: number, projectId?: number): Promise<Task[]> {
+    if (projectId !== undefined) {
+      const project = await this.projects.findById(asProjectId(projectId));
+      if (!project) throw new NotFoundError('Project', projectId);
+      if (project.tenantId !== callerTenantId) throw new ForbiddenError('Project belongs to a different workspace');
+      return this.tasks.findAll(asProjectId(projectId));
+    }
+    // No project filter: return tasks for ALL projects in this tenant
+    const tenantProjects = await this.projects.findByTenant(asTenantId(callerTenantId));
+    const projectIds = tenantProjects.map(p => asProjectId(p.id));
+    return this.tasks.findByProjectIds(projectIds);
   }
 
   async getTask(id: number): Promise<Task> {
@@ -46,9 +56,10 @@ export class TaskService {
     return task;
   }
 
-  async createTask(dto: CreateTaskDto): Promise<Task> {
+  async createTask(dto: CreateTaskDto, callerTenantId: number): Promise<Task> {
     const project = await this.projects.findById(asProjectId(dto.projectId));
     if (!project) throw new NotFoundError('Project', dto.projectId);
+    if (project.tenantId !== callerTenantId) throw new ForbiddenError('Project belongs to a different workspace');
 
     const taskCount = await this.tasks.countByProject(asProjectId(dto.projectId));
 
