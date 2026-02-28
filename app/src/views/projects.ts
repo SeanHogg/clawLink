@@ -63,8 +63,9 @@ export class CclProjects extends LitElement {
     }
   }
 
-  private async remove(p: Project) {
-    if (!confirm(`Delete project "${p.name}"? This cannot be undone.`)) return;
+  private async remove(p?: Project | null) {
+    if (!p?.id) return;
+    if (!confirm(`Delete project "${p.name ?? "this project"}"? This cannot be undone.`)) return;
     try {
       await projectsApi.remove(p.id);
       this.items = this.items.filter(i => i.id !== p.id);

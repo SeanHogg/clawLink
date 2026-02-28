@@ -26,6 +26,10 @@ export const authMiddleware: MiddlewareHandler<HonoEnv> = async (c, next) => {
     throw new UnauthorizedError('Invalid or expired token');
   }
 
+  if (payload.tid == null) {
+    throw new UnauthorizedError('This endpoint requires a workspace token; please select a workspace first');
+  }
+
   c.set('userId',   payload.sub);
   c.set('tenantId', payload.tid);
   c.set('role',     payload.role);

@@ -20,7 +20,8 @@ export function errorHandler(err: Error, c: Context): Response {
   if (err instanceof NotFoundError)    return c.json({ error: err.message }, 404);
   if (err instanceof ConflictError)    return c.json({ error: err.message }, 409);
 
-  // Unexpected errors – avoid leaking internals in production
+  // Unexpected errors
   console.error('[unhandled]', err);
-  return c.json({ error: 'Internal server error' }, 500);
+  const message = err instanceof Error ? err.message : String(err);
+  return c.json({ error: message }, 500);
 }

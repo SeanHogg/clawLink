@@ -122,9 +122,10 @@ export class CclTasks extends LitElement {
     }
   }
 
-  private async remove(t: Task, e: Event) {
-    e.stopPropagation();
-    if (!confirm(`Delete "${t.title}"?`)) return;
+  private async remove(t?: Task | null, e?: Event) {
+    e?.stopPropagation();
+    if (!t?.id) return;
+    if (!confirm(`Delete "${t.title ?? "this task"}"?`)) return;
     await tasksApi.remove(t.id);
     this.items = this.items.filter(i => i.id !== t.id);
     if (this.drawerTask?.id === t.id) this.drawerTask = null;

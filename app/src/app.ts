@@ -1,4 +1,4 @@
-import { LitElement, html, css } from "lit";
+import { LitElement, html, css, type PropertyValues } from "lit";
 import { customElement, state } from "lit/decorators.js";
 
 import {
@@ -44,6 +44,13 @@ export class CclApp extends LitElement {
   override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener("ccl:unauthorized", this.handleUnauthorized);
+  }
+
+  override updated(changed: PropertyValues<this>) {
+    if (this.appState !== "dashboard") return;
+    if (changed.has("appState") || changed.has("tab") || changed.has("tenant")) {
+      this.mountDashboardView();
+    }
   }
 
   private handleUnauthorized = () => {
@@ -139,7 +146,59 @@ export class CclApp extends LitElement {
     this.appState = "workspace-picker";
   }
 
-  private setTab(t: DashTab) { this.tab = t; }
+  private setTab(t: DashTab) {
+    if (this.tab === t) return;
+    this.tab = t;
+  }
+
+  private mountDashboardView() {
+    const host = this.querySelector("#dashboard-view-host");
+    if (!(host instanceof HTMLElement)) return;
+
+    const tenantId = this.tenant?.id ?? "";
+    let view: HTMLElement;
+
+    switch (this.tab) {
+      case "tasks": {
+        const el = document.createElement("ccl-tasks") as HTMLElement & { tenantId?: string };
+        el.tenantId = tenantId;
+        view = el;
+        break;
+      }
+      case "projects": {
+        const el = document.createElement("ccl-projects") as HTMLElement & { tenantId?: string };
+        el.tenantId = tenantId;
+        view = el;
+        break;
+      }
+      case "claws": {
+        const el = document.createElement("ccl-claws") as HTMLElement & { tenantId?: string };
+        el.tenantId = tenantId;
+        view = el;
+        break;
+      }
+      case "skills": {
+        const el = document.createElement("ccl-skills") as HTMLElement & { tenantId?: string };
+        el.tenantId = tenantId;
+        view = el;
+        break;
+      }
+      case "workspace": {
+        const el = document.createElement("ccl-workspace") as HTMLElement & { tenant?: TenantSummary | null };
+        el.tenant = this.tenant;
+        view = el;
+        break;
+      }
+      case "logs": {
+        const el = document.createElement("ccl-logs") as HTMLElement & { tenantId?: string };
+        el.tenantId = tenantId;
+        view = el;
+        break;
+      }
+    }
+
+    host.replaceChildren(view);
+  }
 
   // ---------------------------------------------------------------------------
   // Theme
@@ -365,7 +424,7 @@ export class CclApp extends LitElement {
         <header class="topbar">
           <div class="topbar-left">
             <div class="brand">
-              <img class="brand-logo" src="/logo.png" alt="CoderClawLink" onerror="this.style.display='none'">
+              <img class="brand-logo" src="/claw-logo.png" alt="CoderClawLink" onerror="this.style.display='none'">
               <span class="brand-name">CoderClawLink</span>
               <span class="brand-badge">BETA</span>
             </div>
@@ -413,28 +472,10 @@ export class CclApp extends LitElement {
 
         <!-- Content -->
         <main class="content">
-          ${this.renderTabContent()}
+          <div id="dashboard-view-host"></div>
         </main>
       </div>
     `;
-  }
-
-  private renderTabContent() {
-    const tenantId = this.tenant?.id ?? "";
-    switch (this.tab) {
-      case "tasks":
-        return html`<ccl-tasks .tenantId=${tenantId}></ccl-tasks>`;
-      case "projects":
-        return html`<ccl-projects .tenantId=${tenantId}></ccl-projects>`;
-      case "claws":
-        return html`<ccl-claws .tenantId=${tenantId}></ccl-claws>`;
-      case "skills":
-        return html`<ccl-skills .tenantId=${tenantId}></ccl-skills>`;
-      case "workspace":
-        return html`<ccl-workspace .tenant=${this.tenant}></ccl-workspace>`;
-      case "logs":
-        return html`<ccl-logs .tenantId=${tenantId}></ccl-logs>`;
-    }
   }
 
   static override styles = css``;

@@ -38,7 +38,7 @@ export class CclAuth extends LitElement {
       <div class="auth-shell">
         <div class="auth-card">
           <div class="auth-logo">
-            <img src="/logo.png" alt="CoderClawLink" onerror="this.style.display='none'" style="width:36px;height:36px">
+            <img src="/claw-logo.png" alt="CoderClawLink" onerror="this.style.display='none'" style="width:36px;height:36px">
             <div>
               <div class="auth-logo-name">CoderClawLink</div>
               <div class="auth-logo-sub">AI Coding Mesh</div>

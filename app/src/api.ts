@@ -278,14 +278,14 @@ export const tasks = {
   },
 
   async run(id: string, payload?: string): Promise<Execution> {
-    return request(`/api/tasks/${id}/executions`, {
+    return request(`/api/runtime/tasks/${id}/executions`, {
       method: "POST",
       body: JSON.stringify({ payload }),
     });
   },
 
   async executions(id: string): Promise<Execution[]> {
-    return request(`/api/tasks/${id}/executions`);
+    return request(`/api/runtime/tasks/${id}/executions`);
   },
 };
 
@@ -364,6 +364,6 @@ export const executions = {
     const q = new URLSearchParams();
     if (params?.taskId) q.set("taskId", params.taskId);
     if (params?.clawId) q.set("clawId", params.clawId);
-    return request(`/api/executions${q.size ? `?${q}` : ""}`);
+    return request(`/api/runtime/executions${q.size ? `?${q}` : ""}`);
   },
 };
