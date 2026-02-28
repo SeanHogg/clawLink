@@ -18,7 +18,7 @@ import "./views/skills.js";
 import "./views/workspace.js";
 import "./views/logs.js";
 
-type AppState = "loading" | "auth" | "workspace-picker" | "dashboard";
+type AppState = "loading" | "landing" | "auth" | "workspace-picker" | "dashboard";
 type DashTab = "projects" | "tasks" | "claws" | "skills" | "workspace" | "logs";
 
 @customElement("ccl-app")
@@ -50,12 +50,12 @@ export class CclApp extends LitElement {
     clearSession();
     this.user = null;
     this.tenant = null;
-    this.appState = "auth";
+    this.appState = "landing";
   };
 
   private async bootstrap() {
     const webToken = getWebToken();
-    if (!webToken) { this.appState = "auth"; return; }
+    if (!webToken) { this.appState = "landing"; return; }
 
     const tenantToken = getTenantToken();
     const tenantId = getTenantId();
@@ -132,7 +132,7 @@ export class CclApp extends LitElement {
     this.user = null;
     this.tenant = null;
     this.tenantList = [];
-    this.appState = "auth";
+    this.appState = "landing";
   }
 
   private handleSwitchWorkspace() {
@@ -147,7 +147,8 @@ export class CclApp extends LitElement {
 
   private loadTheme() {
     const saved = localStorage.getItem("ccl-theme") as "dark" | "light" | null;
-    this.theme = saved ?? "dark";
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    this.theme = saved ?? (prefersDark ? "dark" : "light");
     document.documentElement.dataset.theme = this.theme;
   }
 
@@ -199,8 +200,9 @@ export class CclApp extends LitElement {
   // ---------------------------------------------------------------------------
 
   override render() {
-    if (this.appState === "loading") return this.renderLoading();
-    if (this.appState === "auth")   return this.renderAuth();
+    if (this.appState === "loading")          return this.renderLoading();
+    if (this.appState === "landing")          return this.renderLanding();
+    if (this.appState === "auth")             return this.renderAuth();
     if (this.appState === "workspace-picker") return this.renderWorkspacePicker();
     return this.renderDashboard();
   }
@@ -210,6 +212,122 @@ export class CclApp extends LitElement {
       <div class="auth-shell">
         <div style="text-align:center;color:var(--muted);font-size:14px">Loading…</div>
       </div>`;
+  }
+
+  private renderLanding() {
+    return html`
+      <div class="landing">
+        <!-- Nav -->
+        <header class="landing-nav">
+          <div class="landing-nav-inner">
+            <a class="landing-logo" href="/">
+              <img src="https://cdn.builder.io/api/v1/image/assets%2Fac94883aaa0849cc897eb61793256164%2Fc284d818569a472aa80fdbee574db744?format=webp&width=64&height=64" alt="" onerror="this.style.display='none'">
+              CoderClawLink
+            </a>
+            <div class="landing-nav-right">
+              <button class="btn btn-ghost btn-sm" @click=${() => { this.appState = "auth"; }}>Sign in</button>
+              <button class="btn btn-primary btn-sm" @click=${() => { this.appState = "auth"; }}>Get Started</button>
+              <button class="btn btn-ghost btn-icon" @click=${() => this.toggleTheme()} title="Toggle theme">
+                <span .innerHTML=${this.svgIcon(this.theme === "dark" ? "sun" : "moon")}></span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Hero -->
+        <section class="landing-hero">
+          <div class="landing-hero-inner">
+            <span class="landing-badge">Now in Beta</span>
+            <h1 class="landing-title">Your AI Coding Mesh,<br> Unified</h1>
+            <p class="landing-sub">Register your CoderClaw instances, assign skills from the marketplace, and orchestrate intelligent workflows across your entire development environment.</p>
+            <div class="landing-ctas">
+              <button class="btn btn-primary btn-lg" @click=${() => { this.appState = "auth"; }}>Get Started Free</button>
+              <button class="btn btn-ghost btn-lg" @click=${() => { this.appState = "auth"; }}>Sign In →</button>
+            </div>
+            <p class="landing-note">No credit card required. Free to get started.</p>
+          </div>
+          <div class="landing-mesh" aria-hidden="true">
+            <div class="mesh-center">
+              <img src="https://cdn.builder.io/api/v1/image/assets%2Fac94883aaa0849cc897eb61793256164%2Fc284d818569a472aa80fdbee574db744?format=webp&width=200&height=300" alt="" onerror="this.style.display='none'">
+            </div>
+            <div class="mesh-node mesh-node-1">🤖<span>claw-01</span></div>
+            <div class="mesh-node mesh-node-2">🤖<span>claw-02</span></div>
+            <div class="mesh-node mesh-node-3">🤖<span>claw-03</span></div>
+            <div class="mesh-line mesh-line-1"></div>
+            <div class="mesh-line mesh-line-2"></div>
+            <div class="mesh-line mesh-line-3"></div>
+          </div>
+        </section>
+
+        <!-- Features -->
+        <section class="landing-section">
+          <div class="landing-section-inner">
+            <h2 class="landing-section-title">Everything you need to orchestrate your mesh</h2>
+            <p class="landing-section-sub">CoderClawLink connects your CoderClaw agents into a unified, skill-aware coding mesh.</p>
+            <div class="landing-grid-4">
+              <div class="landing-feature-card">
+                <div class="landing-feature-icon">🤖</div>
+                <h3>CoderClaw Mesh</h3>
+                <p>Register any number of CoderClaw instances to your workspace. Each claw gets a unique API key and joins your intelligent mesh automatically.</p>
+              </div>
+              <div class="landing-feature-card">
+                <div class="landing-feature-icon">🧩</div>
+                <h3>Skills Marketplace</h3>
+                <p>Browse and assign capabilities from the marketplace. Target your entire workspace or individual claws for precision orchestration.</p>
+              </div>
+              <div class="landing-feature-card">
+                <div class="landing-feature-icon">📋</div>
+                <h3>Projects &amp; Tasks</h3>
+                <p>Organize work into projects with kanban-style task management. Track progress across your entire coding mesh in real time.</p>
+              </div>
+              <div class="landing-feature-card">
+                <div class="landing-feature-icon">🏢</div>
+                <h3>Multi-Tenant Workspaces</h3>
+                <p>Create isolated workspaces for different teams or repos. Invite collaborators, manage roles, and keep everything neatly separated.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Steps -->
+        <section class="landing-section landing-section-alt">
+          <div class="landing-section-inner">
+            <h2 class="landing-section-title">Up and running in three steps</h2>
+            <div class="landing-grid-3">
+              <div class="landing-step-card">
+                <div class="landing-step-num">01</div>
+                <h3>Create your account</h3>
+                <p>Sign up with your email. Create a workspace for your team or project in seconds.</p>
+              </div>
+              <div class="landing-step-card">
+                <div class="landing-step-num">02</div>
+                <h3>Register your claws</h3>
+                <p>Add each CoderClaw instance to your mesh. Paste the generated API key into your claw config and it connects automatically.</p>
+              </div>
+              <div class="landing-step-card">
+                <div class="landing-step-num">03</div>
+                <h3>Assign skills &amp; orchestrate</h3>
+                <p>Browse the skills marketplace, assign capabilities to your workspace or individual claws, and start building.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="landing-cta-section">
+          <div class="landing-section-inner" style="text-align:center">
+            <h2 style="font-size:clamp(24px,4vw,36px);font-weight:700;margin:0 0 12px">Ready to build your mesh?</h2>
+            <p style="color:var(--muted);margin:0 0 28px">Create your free account and register your first CoderClaw in minutes.</p>
+            <button class="btn btn-primary btn-lg" @click=${() => { this.appState = "auth"; }}>Start for free →</button>
+          </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="landing-footer">
+          <span>© 2026 CoderClaw · <a href="https://coderclaw.ai" target="_blank" rel="noopener">coderclaw.ai</a></span>
+        </footer>
+      </div>
+    `;
   }
 
   private renderAuth() {
@@ -266,11 +384,7 @@ export class CclApp extends LitElement {
               @click=${() => this.toggleTheme()}
               title="Toggle theme"
             >
-              <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">
-                ${this.theme === "dark"
-                  ? html`<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`
-                  : html`<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`}
-              </svg>
+              <span .innerHTML=${this.svgIcon(this.theme === "dark" ? "sun" : "moon")}></span>
             </button>
             <button
               class="btn btn-ghost btn-icon"

@@ -174,10 +174,10 @@ export interface SkillAssignment {
 // ---------------------------------------------------------------------------
 
 export const auth = {
-  async register(email: string, password: string): Promise<{ token: string; user: UserInfo }> {
+  async register(email: string, username: string, password: string): Promise<{ token: string; user: UserInfo }> {
     return request("/api/auth/web/register", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, username, password }),
       token: null,
     });
   },
@@ -198,7 +198,8 @@ export const auth = {
   },
 
   async listTenants(): Promise<TenantSummary[]> {
-    return request("/api/tenants");
+    const res = await request<{ tenants: TenantSummary[] }>("/api/tenants/mine");
+    return res.tenants;
   },
 };
 
@@ -208,7 +209,7 @@ export const auth = {
 
 export const tenants = {
   async create(name: string): Promise<TenantSummary> {
-    return request("/api/tenants", { method: "POST", body: JSON.stringify({ name }) });
+    return request("/api/tenants/create", { method: "POST", body: JSON.stringify({ name }) });
   },
 
   async get(id: string): Promise<Tenant> {
@@ -233,7 +234,8 @@ export const tenants = {
 
 export const projects = {
   async list(): Promise<Project[]> {
-    return request("/api/projects");
+    const res = await request<{ projects: Project[] }>("/api/projects");
+    return res.projects;
   },
 
   async create(data: { name: string; description?: string }): Promise<Project> {
@@ -259,7 +261,8 @@ export const tasks = {
     if (params?.projectId) q.set("projectId", params.projectId);
     if (params?.status)    q.set("status", params.status);
     if (params?.archived)  q.set("archived", "true");
-    return request(`/api/tasks${q.size ? `?${q}` : ""}`);
+    const res = await request<{ tasks: Task[] }>(`/api/tasks${q.size ? `?${q}` : ""}`);
+    return res.tasks;
   },
 
   async create(data: Partial<Task>): Promise<Task> {
@@ -292,7 +295,8 @@ export const tasks = {
 
 export const claws = {
   async list(): Promise<Claw[]> {
-    return request("/api/claws");
+    const res = await request<{ claws: Claw[] }>("/api/claws");
+    return res.claws;
   },
 
   async register(name: string): Promise<ClawRegistration> {
@@ -321,13 +325,15 @@ export const claws = {
 
 export const marketplace = {
   async list(): Promise<Skill[]> {
-    return request("/marketplace/skills");
+    const res = await request<{ skills: Skill[] }>("/marketplace/skills");
+    return res.skills;
   },
 };
 
 export const skillAssignments = {
   async listTenant(): Promise<SkillAssignment[]> {
-    return request("/api/skill-assignments/tenant");
+    const res = await request<{ assignments: SkillAssignment[] }>("/api/skill-assignments/tenant");
+    return res.assignments;
   },
 
   async assignTenant(slug: string): Promise<void> {

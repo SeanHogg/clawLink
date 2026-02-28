@@ -8,6 +8,7 @@ export class CclAuth extends LitElement {
 
   @state() private mode: "login" | "register" = "login";
   @state() private email = "";
+  @state() private username = "";
   @state() private password = "";
   @state() private loading = false;
   @state() private error = "";
@@ -18,10 +19,11 @@ export class CclAuth extends LitElement {
     this.loading = true;
     this.error = "";
     try {
-      const fn = this.mode === "login" ? auth.login : auth.register;
-      const res = await fn(this.email, this.password);
+      const res = this.mode === "login"
+        ? await auth.login(this.email, this.password)
+        : await auth.register(this.email, this.username || this.email.split("@")[0], this.password);
       this.dispatchEvent(new CustomEvent<{ token: string; user: UserInfo }>(
-        this.mode,
+        this.mode === "register" ? "register" : "login",
         { detail: res, bubbles: true, composed: true }
       ));
     } catch (err) {
@@ -61,6 +63,18 @@ export class CclAuth extends LitElement {
                 required
               >
             </div>
+            ${this.mode === "register" ? html`
+            <div class="field">
+              <label class="label">Username <span class="label-hint">(optional)</span></label>
+              <input
+                class="input"
+                type="text"
+                placeholder="yourhandle"
+                .value=${this.username}
+                @input=${(e: InputEvent) => { this.username = (e.target as HTMLInputElement).value; }}
+                autocomplete="username"
+              >
+            </div>` : ""}
             <div class="field">
               <label class="label">Password</label>
               <input
