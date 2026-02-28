@@ -6,6 +6,14 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   base: "./",
+  esbuild: {
+    tsconfigRaw: {
+      compilerOptions: {
+        experimentalDecorators: true,
+        useDefineForClassFields: false,
+      },
+    },
+  },
   publicDir: path.resolve(here, "public"),
   optimizeDeps: {
     include: ["lit/directives/repeat.js"],
