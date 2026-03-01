@@ -19,7 +19,7 @@ export interface RegisterDto {
 
 export interface RegisterResult {
   user:   { id: string; email: string };
-  apiKey: string; // shown once � plaintext
+  apiKey: string; // shown once — plaintext
 }
 
 export interface LoginResult {
@@ -42,12 +42,13 @@ export interface WebLoginResult {
   token:     string;
   expiresIn: number;
   user: {
-    id:          string;
-    email:       string;
-    username:    string;
-    displayName: string | null;
-    avatarUrl:   string | null;
-    bio:         string | null;
+    id:           string;
+    email:        string;
+    username:     string;
+    displayName:  string | null;
+    avatarUrl:    string | null;
+    bio:          string | null;
+    isSuperadmin: boolean;
   };
 }
 
@@ -173,7 +174,6 @@ export class AuthService {
       User.createWeb(dto.email, dto.username, pwHash, keyHash),
     );
 
-
     const expiresIn = 86_400;
     const token = await signWebJwt(
       { sub: user.id, email: user.email, username: user.username! },
@@ -185,12 +185,13 @@ export class AuthService {
       token,
       expiresIn,
       user: {
-        id:          user.id,
-        email:       user.email,
-        username:    user.username!,
-        displayName: user.displayName,
-        avatarUrl:   user.avatarUrl,
-        bio:         user.bio,
+        id:           user.id,
+        email:        user.email,
+        username:     user.username!,
+        displayName:  user.displayName,
+        avatarUrl:    user.avatarUrl,
+        bio:          user.bio,
+        isSuperadmin: user.isSuperadmin,
       },
     };
   }
@@ -203,8 +204,14 @@ export class AuthService {
     if (!ok) throw new UnauthorizedError('Invalid email or password');
 
     const expiresIn = 86_400;
+    // Embed sa: true in the token if this is a superadmin
     const token = await signWebJwt(
-      { sub: user.id, email: user.email, username: user.username ?? '' },
+      {
+        sub:      user.id,
+        email:    user.email,
+        username: user.username ?? '',
+        ...(user.isSuperadmin ? { sa: true } : {}),
+      },
       this.jwtSecret,
       expiresIn,
     );
@@ -213,12 +220,13 @@ export class AuthService {
       token,
       expiresIn,
       user: {
-        id:          user.id,
-        email:       user.email,
-        username:    user.username ?? '',
-        displayName: user.displayName,
-        avatarUrl:   user.avatarUrl,
-        bio:         user.bio,
+        id:           user.id,
+        email:        user.email,
+        username:     user.username ?? '',
+        displayName:  user.displayName,
+        avatarUrl:    user.avatarUrl,
+        bio:          user.bio,
+        isSuperadmin: user.isSuperadmin,
       },
     };
   }
@@ -227,12 +235,13 @@ export class AuthService {
     const user = await this.users.findById(userId);
     if (!user) return null;
     return {
-      id:          user.id,
-      email:       user.email,
-      username:    user.username ?? '',
-      displayName: user.displayName,
-      avatarUrl:   user.avatarUrl,
-      bio:         user.bio,
+      id:           user.id,
+      email:        user.email,
+      username:     user.username ?? '',
+      displayName:  user.displayName,
+      avatarUrl:    user.avatarUrl,
+      bio:          user.bio,
+      isSuperadmin: user.isSuperadmin,
     };
   }
 }

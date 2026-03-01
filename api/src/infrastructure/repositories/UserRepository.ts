@@ -73,16 +73,17 @@ export class UserRepository implements IUserRepository {
 
 function toDomain(row: typeof usersTable.$inferSelect): User {
   return User.reconstitute({
-    id:           row.id as UserProps['id'],
-    email:        row.email,
-    apiKeyHash:   row.apiKeyHash,
-    username:     row.username     ?? null,
-    displayName:  row.displayName  ?? null,
-    avatarUrl:    row.avatarUrl    ?? null,
-    bio:          row.bio          ?? null,
-    passwordHash: row.passwordHash ?? null,
-    createdAt:    row.createdAt,
-    updatedAt:    row.updatedAt,
+    id:            row.id as UserProps['id'],
+    email:         row.email,
+    apiKeyHash:    row.apiKeyHash,
+    username:      row.username     ?? null,
+    displayName:   row.displayName  ?? null,
+    avatarUrl:     row.avatarUrl    ?? null,
+    bio:           row.bio          ?? null,
+    passwordHash:  row.passwordHash ?? null,
+    isSuperadmin:  row.isSuperadmin ?? false,
+    createdAt:     row.createdAt,
+    updatedAt:     row.updatedAt,
   });
 }
 

@@ -17,8 +17,9 @@ import "./views/claws.js";
 import "./views/skills.js";
 import "./views/workspace.js";
 import "./views/logs.js";
+import "./views/admin.js";
 
-type AppState = "loading" | "landing" | "auth" | "workspace-picker" | "dashboard";
+type AppState = "loading" | "landing" | "auth" | "workspace-picker" | "dashboard" | "admin";
 type DashTab = "projects" | "tasks" | "claws" | "skills" | "workspace" | "logs";
 
 @customElement("ccl-app")
@@ -39,11 +40,15 @@ export class CclApp extends LitElement {
     this.loadTheme();
     this.bootstrap();
     window.addEventListener("ccl:unauthorized", this.handleUnauthorized);
+    window.addEventListener("ccl:exit-admin", this.handleExitAdmin);
+    window.addEventListener("ccl:impersonate", this.handleImpersonate as EventListener);
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener("ccl:unauthorized", this.handleUnauthorized);
+    window.removeEventListener("ccl:exit-admin", this.handleExitAdmin);
+    window.removeEventListener("ccl:impersonate", this.handleImpersonate as EventListener);
   }
 
   override updated(changed: PropertyValues<this>) {
@@ -58,6 +63,24 @@ export class CclApp extends LitElement {
     this.user = null;
     this.tenant = null;
     this.appState = "landing";
+  };
+
+  private handleExitAdmin = () => {
+    // Return to workspace picker (or dashboard if they already had a tenant)
+    this.appState = this.tenant ? "dashboard" : "workspace-picker";
+  };
+
+  private handleImpersonate = (e: CustomEvent<{ tenantId: number }>) => {
+    // Token was already stored by the admin view; load tenant list and navigate
+    const tenantId = String(e.detail.tenantId);
+    const found = this.tenantList.find(t => String(t.id) === tenantId);
+    if (found) {
+      this.tenant = found;
+    } else {
+      // Tenant not in current list — create a minimal stub
+      this.tenant = { id: tenantId, name: "Impersonated Workspace", slug: "", role: "viewer", status: "active" };
+    }
+    this.appState = "dashboard";
   };
 
   private async bootstrap() {
@@ -85,7 +108,7 @@ export class CclApp extends LitElement {
     // Has web token but no tenant — go to picker
     try {
       this.tenantList = await auth.listTenants();
-      this.appState = this.tenantList.length > 0 ? "workspace-picker" : "workspace-picker";
+      this.appState = "workspace-picker";
     } catch {
       this.appState = "auth";
     }
@@ -222,23 +245,6 @@ export class CclApp extends LitElement {
   // Nav icons (inline SVG)
   // ---------------------------------------------------------------------------
 
-  private icon(name: string) {
-    const paths: Record<string, string> = {
-      projects: `<rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/>`,
-      tasks: `<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>`,
-      claws: `<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/>`,
-      skills: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
-      workspace: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
-      logs: `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
-      sun: `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`,
-      moon: `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`,
-      menu: `<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>`,
-      chevron: `<polyline points="15 18 9 12 15 6"/>`,
-      logout: `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>`,
-    };
-    return html`<svg viewBox="0 0 24 24">${html([`<svg viewBox="0 0 24 24">${paths[name] ?? ""}</svg>`] as unknown as TemplateStringsArray)}</svg>`;
-  }
-
   private svgIcon(name: string) {
     const paths: Record<string, string> = {
       projects: `<rect x="2" y="3" width="7" height="7"/><rect x="15" y="3" width="7" height="7"/><rect x="2" y="14" width="7" height="7"/><rect x="15" y="14" width="7" height="7"/>`,
@@ -247,6 +253,7 @@ export class CclApp extends LitElement {
       skills: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>`,
       workspace: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>`,
       logs: `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>`,
+      admin: `<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>`,
       sun: `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>`,
       moon: `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`,
       logout: `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>`,
@@ -263,6 +270,7 @@ export class CclApp extends LitElement {
     if (this.appState === "landing")          return this.renderLanding();
     if (this.appState === "auth")             return this.renderAuth();
     if (this.appState === "workspace-picker") return this.renderWorkspacePicker();
+    if (this.appState === "admin")            return this.renderAdmin();
     return this.renderDashboard();
   }
 
@@ -399,13 +407,32 @@ export class CclApp extends LitElement {
 
   private renderWorkspacePicker() {
     return html`
-      <ccl-workspace-picker
-        .tenants=${this.tenantList}
-        .user=${this.user}
-        @select-tenant=${this.handleSelectTenant}
-        @create-tenant=${this.handleCreateTenant}
-        @sign-out=${this.handleSignOut}
-      ></ccl-workspace-picker>`;
+      <div>
+        ${this.user?.isSuperadmin ? html`
+          <div style="position:fixed;top:12px;right:12px;z-index:100">
+            <button
+              class="btn btn-ghost btn-sm"
+              style="display:flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--border)"
+              @click=${() => { this.appState = "admin"; }}
+              title="Platform Admin"
+            >
+              <span .innerHTML=${this.svgIcon("admin")}></span>
+              Platform Admin
+            </button>
+          </div>
+        ` : ""}
+        <ccl-workspace-picker
+          .tenants=${this.tenantList}
+          .user=${this.user}
+          @select-tenant=${this.handleSelectTenant}
+          @create-tenant=${this.handleCreateTenant}
+          @sign-out=${this.handleSignOut}
+        ></ccl-workspace-picker>
+      </div>`;
+  }
+
+  private renderAdmin() {
+    return html`<ccl-admin></ccl-admin>`;
   }
 
   private renderDashboard() {
@@ -430,6 +457,17 @@ export class CclApp extends LitElement {
             </div>
           </div>
           <div class="topbar-right">
+            ${this.user?.isSuperadmin ? html`
+              <button
+                class="btn btn-ghost btn-sm"
+                style="display:flex;align-items:center;gap:6px;color:var(--warning,#f59e0b)"
+                @click=${() => { this.appState = "admin"; }}
+                title="Platform Admin"
+              >
+                <span .innerHTML=${this.svgIcon("admin")}></span>
+                Admin
+              </button>
+            ` : ""}
             <button
               class="tenant-chip"
               @click=${this.handleSwitchWorkspace}

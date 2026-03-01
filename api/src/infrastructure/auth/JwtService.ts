@@ -105,6 +105,7 @@ export interface WebJwtPayload {
   sub:      string;   // userId
   email:    string;
   username: string;
+  sa?:      boolean;  // true only for superadmins
   iat:      number;
   exp:      number;
 }

@@ -2,17 +2,18 @@ import { UserId } from '../shared/types';
 import { ValidationError } from '../shared/errors';
 
 export interface UserProps {
-  id:           UserId;
-  email:        string;
-  apiKeyHash:   string | null;
+  id:            UserId;
+  email:         string;
+  apiKeyHash:    string | null;
   // Web / marketplace profile (nullable – only set for web registrations)
-  username:     string | null;
-  displayName:  string | null;
-  avatarUrl:    string | null;
-  bio:          string | null;
-  passwordHash: string | null;
-  createdAt:    Date;
-  updatedAt:    Date;
+  username:      string | null;
+  displayName:   string | null;
+  avatarUrl:     string | null;
+  bio:           string | null;
+  passwordHash:  string | null;
+  isSuperadmin:  boolean;
+  createdAt:     Date;
+  updatedAt:     Date;
 }
 
 /**
@@ -40,6 +41,7 @@ export class User {
       avatarUrl: null,
       bio: null,
       passwordHash: null,
+      isSuperadmin: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -65,6 +67,7 @@ export class User {
       avatarUrl: null,
       bio: null,
       passwordHash,
+      isSuperadmin: false,
       createdAt: now,
       updatedAt: now,
     });
@@ -74,16 +77,17 @@ export class User {
     return new User(props);
   }
 
-  get id(): UserId           { return this.props.id; }
-  get email(): string        { return this.props.email; }
-  get apiKeyHash(): string | null { return this.props.apiKeyHash; }
+  get id(): UserId                  { return this.props.id; }
+  get email(): string               { return this.props.email; }
+  get apiKeyHash(): string | null   { return this.props.apiKeyHash; }
   get username(): string | null     { return this.props.username; }
   get displayName(): string | null  { return this.props.displayName; }
   get avatarUrl(): string | null    { return this.props.avatarUrl; }
   get bio(): string | null          { return this.props.bio; }
   get passwordHash(): string | null { return this.props.passwordHash; }
-  get createdAt(): Date      { return this.props.createdAt; }
-  get updatedAt(): Date      { return this.props.updatedAt; }
+  get isSuperadmin(): boolean       { return this.props.isSuperadmin; }
+  get createdAt(): Date             { return this.props.createdAt; }
+  get updatedAt(): Date             { return this.props.updatedAt; }
 
   toPlain(): UserProps { return { ...this.props }; }
 }

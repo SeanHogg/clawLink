@@ -43,6 +43,7 @@ import { createMarketplaceRoutes } from './presentation/routes/marketplaceRoutes
 import { createClawRoutes }        from './presentation/routes/clawRoutes';
 import { createSkillAssignmentRoutes } from './presentation/routes/skillAssignmentRoutes';
 import { createLlmRoutes }          from './presentation/routes/llmRoutes';
+import { createAdminRoutes }        from './presentation/routes/adminRoutes';
 
 // Middleware
 import { corsMiddleware } from './presentation/middleware/cors';
@@ -106,6 +107,7 @@ function buildApp(env: Env): Hono<HonoEnv> {
   app.route('/api/skills',   createSkillRoutes(agentService));
   app.route('/api/runtime',  createRuntimeRoutes(runtimeService));
   app.route('/api/audit',    createAuditRoutes(auditService));
+  app.route('/api/admin',    createAdminRoutes());
 
   app.onError(errorHandler);
   app.notFound((c) => c.json({ error: 'Not found' }, 404));

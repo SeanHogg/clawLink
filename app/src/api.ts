@@ -75,8 +75,11 @@ async function request<T>(
 // ---------------------------------------------------------------------------
 
 export interface UserInfo {
-  id: string;
-  email: string;
+  id:            string;
+  email:         string;
+  username?:     string;
+  displayName?:  string | null;
+  isSuperadmin?: boolean;
 }
 
 export interface TenantSummary {
@@ -365,5 +368,79 @@ export const executions = {
     if (params?.taskId) q.set("taskId", params.taskId);
     if (params?.clawId) q.set("clawId", params.clawId);
     return request(`/api/runtime/executions${q.size ? `?${q}` : ""}`);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Admin (superadmin only — uses WebJWT with sa: true)
+// ---------------------------------------------------------------------------
+
+export interface AdminUser {
+  id:            string;
+  email:         string;
+  username:      string | null;
+  displayName:   string | null;
+  isSuperadmin:  boolean;
+  createdAt:     string;
+  tenantCount:   number;
+}
+
+export interface AdminTenant {
+  id:           number;
+  name:         string;
+  slug:         string;
+  status:       string;
+  createdAt:    string;
+  memberCount:  number;
+  clawCount:    number;
+}
+
+export interface AdminHealth {
+  status:    string;
+  db:        { ok: boolean; latencyMs: number };
+  platform:  { userCount: number; tenantCount: number; clawCount: number; executionCount: number; errorCount: number };
+  llm:       { pool: number; models: Array<{ model: string }> };
+  timestamp: string;
+}
+
+export interface AdminError {
+  id:        number;
+  method:    string | null;
+  path:      string | null;
+  message:   string | null;
+  stack:     string | null;
+  createdAt: string;
+}
+
+/** Admin API uses the WebJWT (not tenant token) since it crosses tenant boundaries. */
+function adminRequest<T>(path: string, opts: RequestInit = {}): Promise<T> {
+  return request<T>(path, { ...opts, token: getWebToken() });
+}
+
+export const adminApi = {
+  async users(): Promise<AdminUser[]> {
+    const res = await adminRequest<{ users: AdminUser[] }>("/api/admin/users");
+    return res.users;
+  },
+
+  async tenants(): Promise<AdminTenant[]> {
+    const res = await adminRequest<{ tenants: AdminTenant[] }>("/api/admin/tenants");
+    return res.tenants;
+  },
+
+  async health(): Promise<AdminHealth> {
+    return adminRequest<AdminHealth>("/api/admin/health");
+  },
+
+  async errors(): Promise<AdminError[]> {
+    const res = await adminRequest<{ errors: AdminError[] }>("/api/admin/errors");
+    return res.errors;
+  },
+
+  async impersonate(userId: string, tenantId: number): Promise<{ token: string; email: string; role: string }> {
+    return adminRequest("/api/admin/impersonate", {
+      method: "POST",
+      body: JSON.stringify({ userId, tenantId }),
+    });
   },
 };

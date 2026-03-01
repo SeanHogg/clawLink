@@ -71,16 +71,26 @@ export const clawStatusEnum = pgEnum('claw_status', ['active', 'inactive', 'susp
  * marketplace users (email + password).
  */
 export const users = pgTable('users', {
-  id:           varchar('id', { length: 36 }).primaryKey(),
-  email:        varchar('email', { length: 255 }).notNull().unique(),
-  apiKeyHash:   varchar('api_key_hash', { length: 64 }),
-  username:     varchar('username', { length: 100 }).unique(),
-  displayName:  varchar('display_name', { length: 255 }),
-  avatarUrl:    varchar('avatar_url', { length: 500 }),
-  bio:          text('bio'),
-  passwordHash: varchar('password_hash', { length: 255 }),
-  createdAt:    timestamp('created_at').notNull().defaultNow(),
-  updatedAt:    timestamp('updated_at').notNull().defaultNow(),
+  id:            varchar('id', { length: 36 }).primaryKey(),
+  email:         varchar('email', { length: 255 }).notNull().unique(),
+  apiKeyHash:    varchar('api_key_hash', { length: 64 }),
+  username:      varchar('username', { length: 100 }).unique(),
+  displayName:   varchar('display_name', { length: 255 }),
+  avatarUrl:     varchar('avatar_url', { length: 500 }),
+  bio:           text('bio'),
+  passwordHash:  varchar('password_hash', { length: 255 }),
+  isSuperadmin:  boolean('is_superadmin').notNull().default(false),
+  createdAt:     timestamp('created_at').notNull().defaultNow(),
+  updatedAt:     timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const apiErrorLog = pgTable('api_error_log', {
+  id:        serial('id').primaryKey(),
+  method:    varchar('method', { length: 10 }),
+  path:      varchar('path', { length: 500 }),
+  message:   text('message'),
+  stack:     text('stack'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
 // ---------------------------------------------------------------------------
