@@ -4,9 +4,10 @@ import {
   adminApi,
   setTenantToken, setTenantId,
   type AdminUser, type AdminTenant, type AdminHealth, type AdminError,
+  type LlmUsageStats,
 } from "../api.js";
 
-type AdminTab = "health" | "users" | "tenants" | "errors";
+type AdminTab = "health" | "users" | "tenants" | "errors" | "usage";
 
 @customElement("ccl-admin")
 export class CclAdmin extends LitElement {
@@ -17,6 +18,8 @@ export class CclAdmin extends LitElement {
   @state() private users: AdminUser[] = [];
   @state() private tenants: AdminTenant[] = [];
   @state() private errors: AdminError[] = [];
+  @state() private llmUsage: LlmUsageStats | null = null;
+  @state() private usageDays = 30;
   @state() private loading = false;
   @state() private errorMsg = "";
   @state() private impersonateUserId: string | null = null;
@@ -41,6 +44,8 @@ export class CclAdmin extends LitElement {
         this.tenants = await adminApi.tenants();
       } else if (tab === "errors") {
         this.errors = await adminApi.errors();
+      } else if (tab === "usage") {
+        this.llmUsage = await adminApi.llmUsage(this.usageDays);
       }
     } catch (e: unknown) {
       this.errorMsg = e instanceof Error ? e.message : String(e);
@@ -75,6 +80,11 @@ export class CclAdmin extends LitElement {
     }
   }
 
+  private fmtCooldown(until: number) {
+    const secs = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    return secs >= 60 ? `${Math.ceil(secs / 60)}m` : `${secs}s`;
+  }
+
   private fmtDate(d: string) {
     return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   }
@@ -99,7 +109,7 @@ export class CclAdmin extends LitElement {
 
         <!-- Tabs -->
         <nav class="admin-tabs">
-          ${(["health", "users", "tenants", "errors"] as AdminTab[]).map(t => html`
+          ${(["health", "usage", "users", "tenants", "errors"] as AdminTab[]).map(t => html`
             <button
               class="admin-tab ${this.tab === t ? "active" : ""}"
               @click=${() => this.loadTab(t)}
@@ -122,10 +132,11 @@ export class CclAdmin extends LitElement {
   }
 
   private renderTab() {
-    if (this.tab === "health") return this.renderHealth();
-    if (this.tab === "users")  return this.renderUsers();
+    if (this.tab === "health")  return this.renderHealth();
+    if (this.tab === "usage")   return this.renderUsage();
+    if (this.tab === "users")   return this.renderUsers();
     if (this.tab === "tenants") return this.renderTenants();
-    if (this.tab === "errors") return this.renderErrors();
+    if (this.tab === "errors")  return this.renderErrors();
     return html``;
   }
 
@@ -176,7 +187,21 @@ export class CclAdmin extends LitElement {
         <div class="health-card health-wide">
           <div class="health-label">LLM Model Pool (${h.llm.pool} models)</div>
           <div class="model-list">
-            ${h.llm.models.map(m => html`<span class="model-chip">${m.model}</span>`)}
+            ${h.llm.models.map(m => {
+              const chipStyle = m.available
+                ? "background:var(--success-bg,#d1fae5);color:var(--success-text,#065f46);border-color:var(--success-border,#6ee7b7)"
+                : "background:var(--error-bg,#fee2e2);color:var(--error-text,#991b1b);border-color:var(--error-border,#fca5a5)";
+              const label = m.available
+                ? `${m.preferred ? "★ " : ""}${m.model}`
+                : `${m.model} ⏳${this.fmtCooldown(m.cooldownUntil ?? 0)}`;
+              const title = m.available
+                ? `${m.preferred ? "Preferred (round-robin). " : "Fallback. "}Available`
+                : `On cooldown — available in ${this.fmtCooldown(m.cooldownUntil ?? 0)}`;
+              return html`<span class="model-chip" style="${chipStyle}" title="${title}">${label}</span>`;
+            })}
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:var(--text-muted,#6b7280)">
+            ★ preferred (round-robin) · green = available · red = on cooldown
           </div>
         </div>
       </div>
@@ -184,6 +209,178 @@ export class CclAdmin extends LitElement {
       <div class="admin-refresh">
         <button class="btn btn-ghost btn-sm" @click=${() => this.loadTab("health")}>↻ Refresh</button>
       </div>
+    `;
+  }
+
+  private fmtNum(n: number | string) {
+    return Number(n).toLocaleString();
+  }
+
+  private renderUsage() {
+    const u = this.llmUsage;
+    if (!u) return html`<div class="loading-state">No data</div>`;
+
+    return html`
+      <!-- Totals -->
+      <div class="health-grid" style="margin-bottom:24px">
+        <div class="health-card">
+          <div class="health-label">Total Requests</div>
+          <div class="health-value">${this.fmtNum(u.totals.requests)}</div>
+          <div class="health-sub">all time</div>
+        </div>
+        <div class="health-card">
+          <div class="health-label">Total Tokens</div>
+          <div class="health-value">${this.fmtNum(u.totals.totalTokens)}</div>
+          <div class="health-sub">all time</div>
+        </div>
+        <div class="health-card">
+          <div class="health-label">Prompt Tokens</div>
+          <div class="health-value">${this.fmtNum(u.totals.promptTokens)}</div>
+        </div>
+        <div class="health-card">
+          <div class="health-label">Completion Tokens</div>
+          <div class="health-value">${this.fmtNum(u.totals.completionTokens)}</div>
+        </div>
+        <div class="health-card">
+          <div class="health-label">Models Used</div>
+          <div class="health-value">${u.totals.modelCount}</div>
+          <div class="health-sub">of ${u.byModel.length > 0 ? u.byModel.length : "—"} tracked</div>
+        </div>
+        <div class="health-card">
+          <div class="health-label">Spend</div>
+          <div class="health-value">$0</div>
+          <div class="health-sub">free tier</div>
+        </div>
+      </div>
+
+      <!-- Per-model table -->
+      <div class="table-header">
+        <span class="table-count">By model — last
+          <select class="usage-days-select" @change=${(e: Event) => {
+            this.usageDays = Number((e.target as HTMLSelectElement).value);
+            this.loadTab("usage");
+          }}>
+            ${[7, 14, 30, 60, 90].map(d => html`
+              <option value="${d}" ?selected=${this.usageDays === d}>${d} days</option>
+            `)}
+          </select>
+        </span>
+        <button class="btn btn-ghost btn-sm" @click=${() => this.loadTab("usage")}>↻ Refresh</button>
+      </div>
+
+      ${u.byModel.length === 0 ? html`
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <div class="empty-title">No LLM usage recorded yet</div>
+          <div class="empty-sub">Usage will appear here once requests flow through the proxy.</div>
+        </div>
+      ` : html`
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th style="text-align:right">Requests</th>
+                <th style="text-align:right">Prompt Tokens</th>
+                <th style="text-align:right">Completion Tokens</th>
+                <th style="text-align:right">Total Tokens</th>
+                <th style="text-align:right">Retries</th>
+                <th style="text-align:right">Streamed</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${u.byModel.map(m => html`
+                <tr>
+                  <td>
+                    <span class="model-chip" style="font-size:12px">${m.model}</span>
+                  </td>
+                  <td style="text-align:right">${this.fmtNum(m.requests)}</td>
+                  <td style="text-align:right text-muted">${this.fmtNum(m.prompt_tokens)}</td>
+                  <td style="text-align:right">${this.fmtNum(m.completion_tokens)}</td>
+                  <td style="text-align:right font-weight:600">${this.fmtNum(m.total_tokens)}</td>
+                  <td style="text-align:right">${m.retries}</td>
+                  <td style="text-align:right">${this.fmtNum(m.streamed_requests)}</td>
+                </tr>
+              `)}
+            </tbody>
+            <tfoot>
+              <tr style="font-weight:600;border-top:2px solid var(--border)">
+                <td>Total</td>
+                <td style="text-align:right">${this.fmtNum(u.byModel.reduce((s, m) => s + m.requests, 0))}</td>
+                <td style="text-align:right">${this.fmtNum(u.byModel.reduce((s, m) => s + Number(m.prompt_tokens), 0))}</td>
+                <td style="text-align:right">${this.fmtNum(u.byModel.reduce((s, m) => s + Number(m.completion_tokens), 0))}</td>
+                <td style="text-align:right">${this.fmtNum(u.byModel.reduce((s, m) => s + Number(m.total_tokens), 0))}</td>
+                <td style="text-align:right">${u.byModel.reduce((s, m) => s + m.retries, 0)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Daily bar chart (CSS-only) -->
+        ${u.daily.length > 0 ? html`
+          <div style="margin-top:24px">
+            <div class="table-header"><span class="table-count">Daily requests — last ${u.days} days</span></div>
+            <div class="usage-bars">
+              ${(() => {
+                const max = Math.max(...u.daily.map(d => d.requests), 1);
+                return u.daily.map(d => html`
+                  <div class="usage-bar-col" title="${d.day}: ${this.fmtNum(d.requests)} requests, ${this.fmtNum(d.total_tokens)} tokens">
+                    <div class="usage-bar" style="height:${Math.max(4, Math.round((d.requests / max) * 80))}px"></div>
+                    <div class="usage-bar-label">${d.day.slice(5)}</div>
+                  </div>
+                `);
+              })()}
+            </div>
+          </div>
+        ` : ""}
+
+        <!-- Failover breakdown -->
+        ${u.failovers.length > 0 ? html`
+          <div style="margin-top:24px">
+            <div class="table-header">
+              <span class="table-count">Failovers — last ${u.days} days</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th style="text-align:right">HTTP Code</th>
+                    <th style="text-align:right">Count</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${u.failovers.map(f => html`
+                    <tr>
+                      <td><span class="model-chip" style="font-size:12px">${f.model}</span></td>
+                      <td style="text-align:right">
+                        ${f.errorCode === 0
+                          ? html`<span class="badge badge-neutral">body</span>`
+                          : html`<span class="badge badge-danger">${f.errorCode}</span>`}
+                      </td>
+                      <td style="text-align:right;font-weight:600">${this.fmtNum(f.count)}</td>
+                      <td class="text-muted" style="font-size:12px">
+                        ${f.errorCode === 0 ? "Provider error in response body" :
+                          f.errorCode === 429 ? "Rate limited" :
+                          f.errorCode === 402 ? "Spend limit reached" :
+                          f.errorCode === 503 ? "Model unavailable" :
+                          f.errorCode === 420 ? "Rate limited (420)" :
+                          `HTTP ${f.errorCode}`}
+                      </td>
+                    </tr>
+                  `)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : html`
+          <div style="margin-top:24px;color:var(--text-muted,#6b7280);font-size:13px">
+            No failover events in the last ${u.days} days.
+          </div>
+        `}
+      `}
     `;
   }
 

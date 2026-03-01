@@ -92,9 +92,25 @@ pnpm --filter api exec tsc --noEmit
 
 ### Database migrations
 
+Migrations are tracked in a `_migrations` table and run automatically on `pnpm deploy`.
+To run them manually:
+
 ```sh
-pnpm db:generate                              # generate SQL from Drizzle schema
-DATABASE_URL=postgres://... pnpm db:migrate   # apply migrations
+# Get the connection string from Neon
+npx neonctl connection-string --project-id <project-id> --org-id <org-id>
+
+# Apply any pending migrations
+DATABASE_URL=<connection-string> pnpm db:migrate
+
+# Or store it in api/.env (never committed) and just run:
+pnpm db:migrate
+```
+
+The project uses Neon org `org-shiny-mountain-55999992`, project `empty-smoke-28326171`.
+
+```sh
+# One-liner to get the connection string for this project:
+npx neonctl connection-string --project-id empty-smoke-28326171 --org-id org-shiny-mountain-55999992
 ```
 
 ---
@@ -114,16 +130,19 @@ Versions follow the **`YYYY.M.D`** scheme (e.g. `2026.2.27`). Always bump before
    # — set "version": "YYYY.M.D" in all three
    ```
 
-2. **Run DB migrations** if the schema changed:
+2. **Ensure `api/.env` has `DATABASE_URL`** (needed by the migration runner):
 
    ```sh
-   DATABASE_URL=postgres://... pnpm db:migrate
+   # Get it from Neon:
+   npx neonctl connection-string --project-id empty-smoke-28326171 --org-id org-shiny-mountain-55999992
+   # Then write to api/.env:
+   # DATABASE_URL=postgresql://...
    ```
 
-3. **Deploy both workers:**
+3. **Deploy both workers** (migrations run automatically before `wrangler deploy`):
 
    ```sh
-   pnpm --filter api run deploy    # wrangler deploy
+   pnpm --filter api run deploy    # runs migrations then wrangler deploy
    pnpm --filter app run deploy    # vite build && wrangler deploy
    ```
 
@@ -134,7 +153,7 @@ Versions follow the **`YYYY.M.D`** scheme (e.g. `2026.2.27`). Always bump before
 
 - [ ] Version bumped in root, `api/`, and `app/` `package.json`
 - [ ] `pnpm --filter app build` succeeds with no errors
-- [ ] DB migration run if `schema.ts` changed
+- [ ] `api/.env` has a valid `DATABASE_URL` (migrations run automatically on deploy)
 - [ ] Wrangler authenticated (`wrangler whoami`)
 
 ---

@@ -20,9 +20,11 @@ import {
   tenantMembers,
   coderclawInstances,
   apiErrorLog,
+  llmUsageLog,
 } from '../../infrastructure/database/schema';
 import { signJwt } from '../../infrastructure/auth/JwtService';
-import { FREE_MODEL_POOL } from '../../application/llm/LlmProxyService';
+import { LlmProxyService, FREE_MODEL_POOL, PREFERRED_POOL_SIZE } from '../../application/llm/LlmProxyService';
+import { llmFailoverLog } from '../../infrastructure/database/schema';
 
 export function createAdminRoutes(): Hono<HonoEnv> {
   const router = new Hono<HonoEnv>();
@@ -109,8 +111,11 @@ export function createAdminRoutes(): Hono<HonoEnv> {
       executionCount: number; errorCount: number;
     }>;
 
-    // LLM model pool status (reuse in-memory cooldown state)
-    const modelPool = FREE_MODEL_POOL.map(m => ({ model: m }));
+    // LLM model pool — use live cooldown state when key is available
+    const apiKey = c.env.OPENROUTER_API_KEY;
+    const modelPool = apiKey
+      ? new LlmProxyService(apiKey).status()
+      : FREE_MODEL_POOL.map((m, i) => ({ model: m, preferred: i < PREFERRED_POOL_SIZE, available: true }));
 
     return c.json({
       status:       dbOk ? 'ok' : 'degraded',
@@ -179,6 +184,84 @@ export function createAdminRoutes(): Hono<HonoEnv> {
       email:        userRow.email,
       tenantId,
       role,
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // GET /api/admin/llm-usage?days=30
+  // Per-model aggregates + daily time series
+  // -------------------------------------------------------------------------
+  router.get('/llm-usage', async (c) => {
+    const days = Math.min(Number(c.req.query('days') ?? '30'), 90);
+    const db = buildDatabase(c.env);
+
+    // Per-model totals
+    const byModel = await db.execute(sql`
+      SELECT
+        model,
+        COUNT(*)::int                    AS requests,
+        SUM(prompt_tokens)::bigint       AS prompt_tokens,
+        SUM(completion_tokens)::bigint   AS completion_tokens,
+        SUM(total_tokens)::bigint        AS total_tokens,
+        SUM(retries)::int                AS retries,
+        COUNT(CASE WHEN streamed THEN 1 END)::int AS streamed_requests
+      FROM llm_usage_log
+      WHERE created_at >= NOW() - (${days} || ' days')::interval
+      GROUP BY model
+      ORDER BY requests DESC
+    `);
+
+    // Daily time series (requests + tokens)
+    const daily = await db.execute(sql`
+      SELECT
+        DATE_TRUNC('day', created_at)::date::text AS day,
+        COUNT(*)::int                             AS requests,
+        SUM(total_tokens)::bigint                 AS total_tokens
+      FROM llm_usage_log
+      WHERE created_at >= NOW() - (${days} || ' days')::interval
+      GROUP BY DATE_TRUNC('day', created_at)
+      ORDER BY DATE_TRUNC('day', created_at)
+    `);
+
+    // Platform totals (all time)
+    const [totals] = (await db.execute(sql`
+      SELECT
+        COUNT(*)::int          AS total_requests,
+        SUM(total_tokens)::bigint AS total_tokens,
+        SUM(prompt_tokens)::bigint AS total_prompt_tokens,
+        SUM(completion_tokens)::bigint AS total_completion_tokens,
+        COUNT(DISTINCT model)::int AS model_count
+      FROM llm_usage_log
+    `)).rows as Array<{
+      total_requests: number; total_tokens: bigint;
+      total_prompt_tokens: bigint; total_completion_tokens: bigint;
+      model_count: number;
+    }>;
+
+    // Per-model failover counts (errors that triggered a fallback)
+    const failovers = await db.execute(sql`
+      SELECT
+        model,
+        error_code  AS "errorCode",
+        COUNT(*)::int AS count
+      FROM llm_failover_log
+      WHERE created_at >= NOW() - (${days} || ' days')::interval
+      GROUP BY model, error_code
+      ORDER BY count DESC
+    `);
+
+    return c.json({
+      days,
+      totals: {
+        requests:          Number(totals?.total_requests          ?? 0),
+        totalTokens:       Number(totals?.total_tokens            ?? 0),
+        promptTokens:      Number(totals?.total_prompt_tokens     ?? 0),
+        completionTokens:  Number(totals?.total_completion_tokens ?? 0),
+        modelCount:        Number(totals?.model_count             ?? 0),
+      },
+      byModel:    byModel.rows,
+      daily:      daily.rows,
+      failovers:  failovers.rows,
     });
   });
 

@@ -399,7 +399,7 @@ export interface AdminHealth {
   status:    string;
   db:        { ok: boolean; latencyMs: number };
   platform:  { userCount: number; tenantCount: number; clawCount: number; executionCount: number; errorCount: number };
-  llm:       { pool: number; models: Array<{ model: string }> };
+  llm:       { pool: number; models: Array<{ model: string; preferred: boolean; available: boolean; cooldownUntil?: number }> };
   timestamp: string;
 }
 
@@ -415,6 +415,42 @@ export interface AdminError {
 /** Admin API uses the WebJWT (not tenant token) since it crosses tenant boundaries. */
 function adminRequest<T>(path: string, opts: RequestInit = {}): Promise<T> {
   return request<T>(path, { ...opts, token: getWebToken() });
+}
+
+export interface LlmModelStat {
+  model:             string;
+  requests:          number;
+  prompt_tokens:     number;
+  completion_tokens: number;
+  total_tokens:      number;
+  retries:           number;
+  streamed_requests: number;
+}
+
+export interface LlmDailyStat {
+  day:          string;
+  requests:     number;
+  total_tokens: number;
+}
+
+export interface LlmFailoverStat {
+  model:     string;
+  errorCode: number;
+  count:     number;
+}
+
+export interface LlmUsageStats {
+  days:   number;
+  totals: {
+    requests:         number;
+    totalTokens:      number;
+    promptTokens:     number;
+    completionTokens: number;
+    modelCount:       number;
+  };
+  byModel:   LlmModelStat[];
+  daily:     LlmDailyStat[];
+  failovers: LlmFailoverStat[];
 }
 
 export const adminApi = {
@@ -442,5 +478,9 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify({ userId, tenantId }),
     });
+  },
+
+  async llmUsage(days = 30): Promise<LlmUsageStats> {
+    return adminRequest<LlmUsageStats>(`/api/admin/llm-usage?days=${days}`);
   },
 };

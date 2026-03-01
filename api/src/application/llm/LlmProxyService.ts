@@ -11,17 +11,23 @@
  * On any of these signals the model is put on a 60-second cooldown and the next
  * healthy model in the pool is tried transparently.
  *
- * Requests are distributed round-robin across the pool so no single model is
- * hammered first on every call.
+ * Pool strategy:
+ *   - The first PREFERRED_POOL_SIZE models are the primary pool; round-robin
+ *     rotates only within them so they handle the vast majority of traffic.
+ *   - The remaining models are fallbacks, tried only when all preferred models
+ *     are on cooldown.
  */
 
 // ---------------------------------------------------------------------------
 // Free model pool — ordered by quality/ctx preference (best first)
+//
+// PREFERRED_POOL_SIZE: the first N models are the primary round-robin group.
+// The rest are genuine fallbacks tried only when preferred are all on cooldown.
 // ---------------------------------------------------------------------------
 
 export const FREE_MODEL_POOL = [
-  'qwen/qwen3-coder:free',                                   // 262k ctx
-  'qwen/qwen3-next-80b-a3b-instruct:free',                   // 262k ctx
+  'qwen/qwen3-coder:free',                                   // 262k ctx  ← preferred
+  'qwen/qwen3-next-80b-a3b-instruct:free',                   // 262k ctx  ← preferred
   'stepfun/step-3.5-flash:free',                              // 256k ctx
   'nvidia/nemotron-3-nano-30b-a3b:free',                      // 256k ctx
   'google/gemma-3-27b-it:free',                               // 131k ctx
@@ -33,6 +39,9 @@ export const FREE_MODEL_POOL = [
   'nvidia/nemotron-nano-9b-v2:free',                          // 128k ctx
   'google/gemma-3-12b-it:free',                               // 32k ctx
 ] as const;
+
+/** Number of models at the top of the pool that form the primary round-robin group. */
+export const PREFERRED_POOL_SIZE = 2;
 
 export type FreeModel = (typeof FREE_MODEL_POOL)[number];
 
@@ -58,6 +67,23 @@ export interface ChatCompletionRequest {
   [key: string]: unknown;
 }
 
+export interface LlmUsage {
+  promptTokens:     number;
+  completionTokens: number;
+  totalTokens:      number;
+}
+
+/** One model attempt that failed and triggered failover. */
+export interface FailoverEvent {
+  /** The model that was tried. */
+  model: string;
+  /**
+   * HTTP status code for HTTP-level failures (402, 429, 503, etc.).
+   * 0 for provider errors embedded in a 200 response body or stream chunk.
+   */
+  code: number;
+}
+
 export interface ProxyResult {
   /** The raw Response from OpenRouter (may be streamed). */
   response: Response;
@@ -65,6 +91,13 @@ export interface ProxyResult {
   resolvedModel: string;
   /** How many failovers happened before success. */
   retries: number;
+  /** Each model that was tried and failed before the resolved model. */
+  failovers: FailoverEvent[];
+  /**
+   * Token usage extracted from a non-streaming response body.
+   * Undefined for streaming responses — captured via stream interception in the route.
+   */
+  usage?: LlmUsage;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +124,7 @@ function isOnCooldown(model: string): boolean {
 // Round-robin cursor  (in-memory, per-isolate)
 // ---------------------------------------------------------------------------
 
-/** Advances each request so the starting model rotates evenly across the pool. */
+/** Advances each request so the starting model rotates within the preferred pool. */
 let requestCursor = 0;
 
 // ---------------------------------------------------------------------------
@@ -145,23 +178,44 @@ export class LlmProxyService {
 
   /**
    * Forward a chat-completion request through the free model pool.
-   * Automatically fails over on any HTTP error status OR embedded error body.
-   * Requests are distributed round-robin so all models share traffic evenly.
+   *
+   * Candidate selection:
+   *   1. Round-robin within the preferred pool (first PREFERRED_POOL_SIZE models).
+   *   2. If all preferred are on cooldown, fall through to the remaining models.
+   *   3. If everything is on cooldown, try all models in order as last resort.
+   *
+   * Any failed attempt is recorded as a FailoverEvent in the result.
    */
   async complete(
     body: ChatCompletionRequest,
     requestHeaders?: Record<string, string>,
   ): Promise<ProxyResult> {
-    const available = FREE_MODEL_POOL.filter((m) => !isOnCooldown(m));
-    const pool = available.length > 0 ? available : [...FREE_MODEL_POOL];
+    const preferredPool = FREE_MODEL_POOL.slice(0, PREFERRED_POOL_SIZE) as FreeModel[];
+    const fallbackPool  = FREE_MODEL_POOL.slice(PREFERRED_POOL_SIZE)    as FreeModel[];
 
-    // Rotate the starting position for round-robin distribution
-    const start = requestCursor % pool.length;
-    const candidates = [...pool.slice(start), ...pool.slice(0, start)];
+    const preferredAvailable = preferredPool.filter((m) => !isOnCooldown(m));
+    const fallbackAvailable  = fallbackPool.filter((m)  => !isOnCooldown(m));
+
+    let candidates: FreeModel[];
+    if (preferredAvailable.length > 0) {
+      // Round-robin within the preferred pool; fallbacks appended after
+      const start = requestCursor % preferredAvailable.length;
+      candidates = [
+        ...preferredAvailable.slice(start),
+        ...preferredAvailable.slice(0, start),
+        ...fallbackAvailable,
+      ];
+    } else if (fallbackAvailable.length > 0) {
+      candidates = fallbackAvailable;
+    } else {
+      // Everything on cooldown — try all in original order as last resort
+      candidates = [...FREE_MODEL_POOL] as FreeModel[];
+    }
     requestCursor++;
 
     let lastResponse: Response | undefined;
     let retries = 0;
+    const failovers: FailoverEvent[] = [];
 
     for (const model of candidates) {
       const upstream = await fetch(OPENROUTER_BASE, {
@@ -178,6 +232,7 @@ export class LlmProxyService {
 
       // ── HTTP error status (402 spend limit, 429 rate limit, 5xx, etc.) ───────
       if (isFailoverStatus(upstream.status)) {
+        failovers.push({ model, code: upstream.status });
         markCooldown(model);
         lastResponse = upstream;
         retries++;
@@ -195,6 +250,7 @@ export class LlmProxyService {
 
         if (isChunkError(firstText)) {
           await passStream.cancel().catch(() => { /* ignore */ });
+          failovers.push({ model, code: 0 });
           markCooldown(model);
           retries++;
           continue;
@@ -205,6 +261,7 @@ export class LlmProxyService {
           response: new Response(passStream, { status: upstream.status, headers: upstream.headers }),
           resolvedModel: model,
           retries,
+          failovers,
         };
       }
 
@@ -212,10 +269,19 @@ export class LlmProxyService {
       const json = await upstream.json() as Record<string, unknown>;
 
       if (isBodyError(json)) {
+        failovers.push({ model, code: 0 });
         markCooldown(model);
         retries++;
         continue;
       }
+
+      // Extract token usage from the response body
+      const rawUsage = json['usage'] as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
+      const usage: LlmUsage | undefined = rawUsage ? {
+        promptTokens:     rawUsage.prompt_tokens     ?? 0,
+        completionTokens: rawUsage.completion_tokens ?? 0,
+        totalTokens:      rawUsage.total_tokens      ?? 0,
+      } : undefined;
 
       // Good response — reconstruct so the route handler can .json() it
       return {
@@ -225,6 +291,8 @@ export class LlmProxyService {
         }),
         resolvedModel: model,
         retries,
+        failovers,
+        usage,
       };
     }
 
@@ -243,15 +311,21 @@ export class LlmProxyService {
       }),
       resolvedModel: candidates[candidates.length - 1] ?? FREE_MODEL_POOL[0],
       retries,
+      failovers,
     };
   }
 
   /** Return the current model pool with cooldown status. */
-  status(): Array<{ model: string; available: boolean; cooldownUntil?: number }> {
-    return FREE_MODEL_POOL.map((m) => {
-      const until = cooldowns.get(m);
+  status(): Array<{ model: string; preferred: boolean; available: boolean; cooldownUntil?: number }> {
+    return FREE_MODEL_POOL.map((model, i) => {
+      const until = cooldowns.get(model);
       const available = !until || Date.now() >= until;
-      return { model: m, available, ...(until && !available ? { cooldownUntil: until } : {}) };
+      return {
+        model,
+        preferred: i < PREFERRED_POOL_SIZE,
+        available,
+        ...(until && !available ? { cooldownUntil: until } : {}),
+      };
     });
   }
 }

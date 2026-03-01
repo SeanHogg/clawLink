@@ -93,6 +93,24 @@ export const apiErrorLog = pgTable('api_error_log', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
+export const llmUsageLog = pgTable('llm_usage_log', {
+  id:               serial('id').primaryKey(),
+  model:            varchar('model', { length: 200 }).notNull(),
+  promptTokens:     integer('prompt_tokens').notNull().default(0),
+  completionTokens: integer('completion_tokens').notNull().default(0),
+  totalTokens:      integer('total_tokens').notNull().default(0),
+  retries:          integer('retries').notNull().default(0),
+  streamed:         boolean('streamed').notNull().default(false),
+  createdAt:        timestamp('created_at').notNull().defaultNow(),
+});
+
+export const llmFailoverLog = pgTable('llm_failover_log', {
+  id:        serial('id').primaryKey(),
+  model:     varchar('model', { length: 200 }).notNull(),
+  errorCode: integer('error_code').notNull().default(0),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 // ---------------------------------------------------------------------------
 // Marketplace tables
 // ---------------------------------------------------------------------------
